@@ -1,0 +1,21 @@
+.auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--color-morado) 0%, var(--color-fucsia) 60%, var(--color-rojo) 100%);
+}
+
+.auth__tarjeta {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.auth__tarjeta h1 {
+  margin-top: 0;
+}
+
+.auth__acento {
+  color: var(--color-rojo);
+}
