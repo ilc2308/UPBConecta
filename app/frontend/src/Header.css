@@ -1,0 +1,29 @@
+.header {
+  background: var(--color-negro);
+  border-bottom: 4px solid var(--color-rojo);
+  color: var(--color-blanco);
+}
+
+.header__contenido {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header__marca {
+  font-size: 1.25rem;
+}
+
+.header__marca strong {
+  color: var(--color-fucsia);
+}
+
+.header__usuario {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
