@@ -97,6 +97,26 @@ UPBConecta/
             └── exception/   # Manejo global y centralizado de excepciones
 ```
 
+
+---
+
+## Credenciales y Configuracion de Base de Datos (PostgreSQL 16)
+
+Para la ejecucion del proyecto tanto en Docker como en entorno local, los parametros predeterminados de la base de datos son:
+
+| Parametro | Variable de entorno | Valor predeterminado |
+|---|---|---|
+| Servidor / Host | DB_HOST | localhost (en Docker: db) |
+| Puerto | DB_PORT | 5432 |
+| Nombre de la base de datos | DB_NAME | upbconecta |
+| Usuario | DB_USER | upbconecta_user |
+| Contrasena | DB_PASSWORD | upbconecta_password_2026 |
+| URL JDBC | - | jdbc:postgresql://localhost:5432/upbconecta |
+
+Estas credenciales coinciden exactamente con las configuradas en .env.example, docker-compose.yml y pplication.yml.
+
+---
+
 ---
 
 ## Guía de instalación y ejecución
