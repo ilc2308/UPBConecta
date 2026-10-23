@@ -1,5 +1,4 @@
 /**
- * Entidades JPA del dominio (Usuario, Oferta, Postulacion, ...).
- * Se agregan en las historias del Sprint 1.
+ * Repositorios Spring Data JPA, uno por entidad del paquete model.
  */
-package co.edu.upb.upbconecta.model;
+package co.edu.upb.upbconecta.repository;
