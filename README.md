@@ -1,4 +1,4 @@
-# UPB Conecta
+﻿# UPB Conecta
 
 Plataforma web colaborativa que conecta a estudiantes de la Universidad Pontificia Bolivariana (UPB) con oportunidades de apoyo, favores de campus, tutorías y microtrabajos remunerados, así como con personas y empresas que publican ofertas. Los ofertantes/empleadores publican solicitudes de trabajo, los estudiantes las buscan y se postulan según su disponibilidad entre clases, y se concreta y cierra la colaboración de forma segura.
 
@@ -263,3 +263,22 @@ UPB Conecta atiende dos perfiles principales: el estudiante solicitante/empleado
 * Prototipo de Media Fidelidad (Figma):  
   * Diseño y Wireframes: https://www.figma.com/make/XmldQdk9JJvw7BcyZnOagr/Wireframes-media-fidelidad-UpbConecta?fullscreen=1&t=BuNbJ0x1JjYviIdB-1&code-node-id=0-6  
   * Prototipo Interactivo Navegable: https://www.figma.com/proto/u9yzIadLRLYvwg3TZiPDkd/Untitled?node-id=3-7&t=A2nrPhqUf6FTkIpH-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1
+
+---
+
+## Credenciales y ConfiguraciÃ³n de Base de Datos (PostgreSQL 16)
+
+Para la ejecuciÃ³n del proyecto tanto en Docker como en entorno local, los parÃ¡metros predeterminados de la base de datos son:
+
+| ParÃ¡metro | Variable de entorno | Valor predeterminado |
+|---|---|---|
+| Servidor / Host | DB_HOST | localhost (en Docker: db) |
+| Puerto | DB_PORT | 5432 |
+| Nombre de la base de datos | DB_NAME | upbconecta |
+| Usuario | DB_USER | upbconecta_user |
+| ContraseÃ±a | DB_PASSWORD | upbconecta_password_2026 |
+| URL JDBC | - | jdbc:postgresql://localhost:5432/upbconecta |
+
+Estas credenciales coinciden exactamente con las configuradas en .env.example, docker-compose.yml y pplication.yml.
+
+## GuÃ­a de instalaciÃ³n y ejecuciÃ³n
