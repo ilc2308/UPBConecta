@@ -1,11 +1,12 @@
 // Llamadas de autenticacion. La sesion viaja en una cookie HttpOnly,
 // por eso todas usan credentials: 'include' y el token nunca pasa por el navegador.
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1').replace(/\/+$/, '');
+const API_BASE = BASE.endsWith('/api/v1') ? BASE : `${BASE}/api/v1`;
 
 export type Usuario = { correo: string; nombre: string };
 
 async function llamar<T>(ruta: string, metodo: 'GET' | 'POST'): Promise<T> {
-  const res = await fetch(`${API_URL}/api/v1/auth${ruta}`, {
+  const res = await fetch(`${API_BASE}/auth${ruta}`, {
     method: metodo,
     credentials: 'include',
   });

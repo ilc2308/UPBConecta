@@ -52,6 +52,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail generico(Exception ex) {
+        if (ex instanceof org.springframework.web.ErrorResponse respuesta) {
+            return respuesta.getBody(); // 404, 405, etc. conservan su codigo
+        }
         log.error("Error no controlado", ex); // el detalle queda en el log, no en la respuesta
         return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
                 "Error interno del servidor");
