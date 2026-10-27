@@ -1,67 +1,59 @@
-package co.edu.upb.upbconecta.exception;
+package co.edu.upb.upbconecta.controller;
 
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
+import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.AuthenticationException;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import co.edu.upb.upbconecta.dto.ApiError;
-import jakarta.servlet.http.HttpServletRequest;
-
-/** Convierte las excepciones en respuestas JSON con el formato ApiError. */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, HttpServletRequest req) {
-        return build(HttpStatus.NOT_FOUND, ex.getMessage(), req);
+    public ProblemDetail noEncontrado(ResourceNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler({NoAutenticadoException.class, AuthenticationException.class})
-    public ResponseEntity<ApiError> handleUnauthorized(RuntimeException ex, HttpServletRequest req) {
-        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), req);
-    }
-
-    @ExceptionHandler({AccesoDenegadoException.class, AccessDeniedException.class})
-    public ResponseEntity<ApiError> handleForbidden(RuntimeException ex, HttpServletRequest req) {
-        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(ConflictoNegocioException.class)
-    public ResponseEntity<ApiError> handleConflict(ConflictoNegocioException ex, HttpServletRequest req) {
-        return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail jsonInvalido(HttpMessageNotReadableException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "El cuerpo de la solicitud no es un JSON valido");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
-        Map<String, String> fieldErrors = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(err -> fieldErrors.putIfAbsent(err.getField(), err.getDefaultMessage()));
-        HttpStatus status = HttpStatus.BAD_REQUEST;
-        ApiError body = new ApiError(status.value(), status.getReasonPhrase(),
-                "Hay campos con errores de validacion", req.getRequestURI(), Instant.now(), fieldErrors);
-        return ResponseEntity.status(status).body(body);
+    public ProblemDetail validacion(MethodArgumentNotValidException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Datos invalidos");
+        pd.setProperty("errores", ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                .toList());
+        return pd;
+    }
+
+    @ExceptionHandler(NoAutenticadoException.class)
+    public ProblemDetail noAutenticado(NoAutenticadoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ProblemDetail accesoDenegado(AccesoDenegadoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConflictoNegocioException.class)
+    public ProblemDetail conflicto(ConflictoNegocioException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleUnexpected(Exception ex, HttpServletRequest req) {
-        log.error("Error no controlado en {}", req.getRequestURI(), ex);
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrio un error inesperado", req);
-    }
-
-    private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest req) {
-        return ResponseEntity.status(status)
-                .body(ApiError.of(status.value(), status.getReasonPhrase(), message, req.getRequestURI()));
+    public ProblemDetail generico(Exception ex) {
+        log.error("Error no controlado", ex); // el detalle queda en el log, no en la respuesta
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Error interno del servidor");
     }
 }

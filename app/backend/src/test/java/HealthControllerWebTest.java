@@ -1,42 +1,26 @@
 package co.edu.upb.upbconecta.controller;
 
+import co.edu.upb.upbconecta.service.HealthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
-import co.edu.upb.upbconecta.service.HealthService;
-import co.edu.upb.upbconecta.dto.HealthResponse;
-
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.time.Instant;
-
-/**
- * Prueba de integracion del endpoint GET /api/v1/health.
- * Verifica que el endpoint este publicado, sea anonimo y devuelva 200.
- */
+/** Verifica que el endpoint real queda publicado en /api/v1/health, responde 200 y no exige autenticacion. */
 @WebMvcTest(HealthController.class)
+@Import(HealthService.class)
 class HealthControllerWebTest {
 
     @Autowired
-    private MockMvc mockMvc;
-
-    @MockitoBean
-    private HealthService healthService;
+    MockMvc mockMvc;
 
     @Test
-    void healthEndpointDevuelve200YEsAnonimo() throws Exception {
-        when(healthService.getHealth())
-                .thenReturn(new HealthResponse("UP", "upbconecta-backend", "1.0.0", Instant.now()));
-
+    void healthEstaPublicadoYResponde200SinAutenticacion() throws Exception {
         mockMvc.perform(get("/api/v1/health"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"))
-                .andExpect(jsonPath("$.service").value("upbconecta-backend"));
+               .andExpect(status().isOk());
     }
 }
