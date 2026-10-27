@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import { ApiStatus } from './ApiStatus'
@@ -9,14 +10,21 @@ const DEMO_HABILITADO = import.meta.env.VITE_DEMO_MODE === 'true'
 export function AuthPage() {
   const { estaAutenticado, iniciarSesionDemo } = useAuth()
   const navigate = useNavigate()
+  const [error, setError] = useState<string | null>(null)
 
   if (estaAutenticado) {
     return <Navigate to="/dashboard" replace />
   }
 
-  const entrarModoDemo = () => {
-    iniciarSesionDemo({ nombre: 'Usuario demo', correo: 'demo@upb.edu.co' })
-    navigate('/dashboard')
+  // La sesion la crea el backend (POST /auth/demo) y llega en una cookie HttpOnly.
+  const entrarModoDemo = async () => {
+    setError(null)
+    try {
+      await iniciarSesionDemo()
+      navigate('/dashboard')
+    } catch {
+      setError('No se pudo iniciar el modo demo. Verifica que el backend tenga DEMO_ENABLED=true.')
+    }
   }
 
   return (
@@ -38,6 +46,8 @@ export function AuthPage() {
             Entrar en modo demo
           </button>
         )}
+
+        {error && <p role="alert">{error}</p>}
 
         <ApiStatus />
       </section>
