@@ -1,0 +1,76 @@
+# ==========================================
+# UPB Conecta - .gitignore Oficial
+# ==========================================
+
+# Variables de entorno y credenciales sensibles
+.env
+.env.local
+.env.*.local
+*.env
+
+# ------------------------------------------
+# Frontend (Node / React / Vite)
+# ------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.eslintcache
+
+# ------------------------------------------
+# Backend (Java / Maven / Spring Boot)
+# ------------------------------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+.mvn/wrapper/maven-wrapper.jar
+
+# ------------------------------------------
+# Python (Entornos virtuales y cache)
+# ------------------------------------------
+__pycache__/
+*.py[cod]
+*.class
+venv/
+env/
+ENV/
+*.sqlite
+*.sqlite3
+*.db
+
+# ------------------------------------------
+# Logs y Archivos Temporales
+# ------------------------------------------
+logs/
+*.log
+*.tmp
+*.bak
+*.swp
+
+# ------------------------------------------
+# IDEs y Editores de CÃ³digo
+# ------------------------------------------
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# ------------------------------------------
+# Docker y Contenedores locales
+# ------------------------------------------
+.docker/
+docker-data/
+postgres-data/
