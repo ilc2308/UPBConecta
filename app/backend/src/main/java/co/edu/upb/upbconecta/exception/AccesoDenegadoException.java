@@ -1,4 +1,4 @@
-package co.edu.upb.upbconecta.controller;
+package co.edu.upb.upbconecta.exception;
 
 
 import org.springframework.http.HttpStatus;

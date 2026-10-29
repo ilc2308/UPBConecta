@@ -20,12 +20,27 @@ UPB Conecta centraliza estas interacciones en una plataforma segura y estructura
 
 ## Guia de instalacion y ejecucion del proyecto
 
-### Requisitos previos
+### Opcion 1: Acceso en la nube (Despliegue 24/7 en Render - Recomendado)
+
+La aplicacion se encuentra desplegada y en ejecucion continua en la nube, con integracion y despliegue continuo (CI/CD) desde la rama `main`:
+
+- **Frontend:** [https://upbconecta-frontend.onrender.com](https://upbconecta-frontend.onrender.com)
+- **API Backend:** [https://upbconecta-backend.onrender.com/api/v1/health](https://upbconecta-backend.onrender.com/api/v1/health)
+- **Base de datos PostgreSQL:** Administrada en Render
+
+> [!NOTE]
+> En el plan gratuito de Render, el servidor entra en reposo tras 15 minutos de inactividad. La primera peticion puede tardar entre 30 y 50 segundos en responder mientras se reactiva la instancia (*Cold Start*).
+
+---
+
+### Opcion 2: Ejecucion local con Docker
+
+#### Requisitos previos
 
 - Docker Desktop 4.x o superior instalado y en ejecucion.
 - Git instalado.
 
-### Pasos de ejecucion
+#### Pasos de ejecucion
 
 1. Clonar el repositorio:
    ```
@@ -56,7 +71,7 @@ UPB Conecta centraliza estas interacciones en una plataforma segura y estructura
 
 ## Guia basica de uso de la aplicacion
 
-1. Ingresar a http://localhost:3000 y autenticarse con cuenta institucional @upb.edu.co.
+1. Ingresar a [https://upbconecta-frontend.onrender.com](https://upbconecta-frontend.onrender.com) (o http://localhost:3000 si se ejecuta localmente) y autenticarse con cuenta institucional @upb.edu.co.
 2. En el Dashboard explorar las solicitudes activas filtradas por ubicacion o urgencia.
 3. Para publicar un encargo: clic en Publicar, ingresar titulo, descripcion, ubicacion en el campus, valor ofrecido y plazo.
 4. Para postularse: abrir el detalle de una oferta y seleccionar Postularse. El solicitante revisara los perfiles y asignara al encargado.
@@ -71,13 +86,13 @@ https://upbconecta.atlassian.net/jira/software/projects/UPBCONECT/boards/2/backl
 - Diseno y wireframes: https://www.figma.com/make/XmldQdk9JJvw7BcyZnOagr/Wireframes-media-fidelidad-UpbConecta?fullscreen=1&t=BuNbJ0x1JjYviIdB-1&code-node-id=0-6
 - Prototipo interactivo navegable: https://www.figma.com/proto/u9yzIadLRLYvwg3TZiPDkd/Untitled?node-id=3-7&t=A2nrPhqUf6FTkIpH-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1
 
-## Integrantes del equipo
+## Documentación
+- Autenticación y modo demo: [docs/AUTENTICACION.md](docs/AUTENTICACION.md)
+
+- ## Integrantes del equipo
 
 - Tatiana Maria Ramirez Arroyave
-- Ismael Lopez Cardozo
+- Ismael López Cardozo
 - Thomas Sining Salazar
 - Fredy Manuel Guzman Herrera
 - Maria Fernanda Toro Torres
-
-## Documentación
-- Autenticación y modo demo: [docs/AUTENTICACION.md](docs/AUTENTICACION.md)
