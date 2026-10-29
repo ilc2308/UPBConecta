@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthPage } from './AuthPage'
 import { DashboardPage } from './DashboardPage'
+import { PostJobPage } from './features/ofertas/PostJobPage'
 import { NotFoundPage } from './NotFoundPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
@@ -12,6 +13,7 @@ export function AppRouter() {
         <Route path="/auth" element={<AuthPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/publicar" element={<PostJobPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
