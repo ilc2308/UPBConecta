@@ -1,6 +1,6 @@
 package co.edu.upb.upbconecta.config;
 
-import co.edu.upb.upbconecta.controller.SesionService;
+import co.edu.upb.upbconecta.service.SesionService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;

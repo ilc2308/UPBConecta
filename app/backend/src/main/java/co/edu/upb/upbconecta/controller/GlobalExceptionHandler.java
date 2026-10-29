@@ -1,5 +1,8 @@
 package co.edu.upb.upbconecta.controller;
 
+import co.edu.upb.upbconecta.exception.AccesoDenegadoException;
+import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
+import co.edu.upb.upbconecta.exception.NoAutenticadoException;
 import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

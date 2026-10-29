@@ -1,6 +1,6 @@
 package co.edu.upb.upbconecta.config;
 
-import co.edu.upb.upbconecta.controller.SesionService;
+import co.edu.upb.upbconecta.service.SesionService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
