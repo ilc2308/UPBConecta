@@ -18,60 +18,80 @@ UPB Conecta centraliza estas interacciones en una plataforma segura y estructura
 - Acceso restringido a la comunidad institucional mediante correo @upb.edu.co y autenticacion SSO con Microsoft.
 - Sistema de reputacion intracomunitario activado al cierre de cada servicio.
 
-## Guia de instalacion y ejecucion del proyecto
+## Guia de instalacion, ejecucion y autenticacion
 
-### Opcion 1: Acceso en la nube (Despliegue 24/7 en Render - Recomendado)
+### Acceso por internet
 
-La aplicacion se encuentra desplegada y en ejecucion continua en la nube, con integracion y despliegue continuo (CI/CD) desde la rama `main`:
+Cuando el despliegue este activo, se puede abrir:
 
 - **Frontend:** [https://upbconecta-frontend.onrender.com](https://upbconecta-frontend.onrender.com)
-- **API Backend:** [https://upbconecta-backend.onrender.com/api/v1/health](https://upbconecta-backend.onrender.com/api/v1/health)
-- **Base de datos PostgreSQL:** Administrada en Render
+- **Estado de la API:** [https://upbconecta-backend.onrender.com/api/v1/health](https://upbconecta-backend.onrender.com/api/v1/health)
 
-> [!NOTE]
-> En el plan gratuito de Render, el servidor entra en reposo tras 15 minutos de inactividad. La primera peticion puede tardar entre 30 y 50 segundos en responder mientras se reactiva la instancia (*Cold Start*).
+La disponibilidad y el inicio de sesion dependen de que los servicios de nube esten desplegados y configurados con sus credenciales. En Render gratuito, un servicio puede entrar en reposo y tardar en responder al primer acceso.
 
----
+#### Configuracion del despliegue en Render
 
-### Opcion 2: Ejecucion local con Docker
+Para publicar la aplicacion en internet se necesitan un servicio PostgreSQL, el backend Spring Boot y el frontend. Configura las variables en el panel de Render; no subas secretos al repositorio:
 
-#### Requisitos previos
+1. Crea una base de datos PostgreSQL y un servicio backend con Dockerfile `app/backend/Dockerfile`. En el backend configura `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JPA_DDL_AUTO=update`, `SERVER_PORT=8080`, `JWT_SECRET`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` y `CORS_ALLOWED_ORIGINS`.
+2. Crea el servicio frontend con Dockerfile `app/frontend/Dockerfile`. Define los argumentos de build `VITE_API_URL=https://<url-publica-del-backend>/api/v1`, `VITE_AZURE_TENANT_ID` y `VITE_AZURE_CLIENT_ID`.
+3. En `CORS_ALLOWED_ORIGINS`, especifica el origen exacto del frontend, por ejemplo `https://upbconecta-frontend.onrender.com` (sin `/` al final).
+4. En Microsoft Entra ID registra el origen publico del frontend seguido de `/auth` como redirect URI de tipo **Single-page application (SPA)**. Para la URL de ejemplo: `https://upbconecta-frontend.onrender.com/auth`.
+5. Despliega y comprueba que `https://<url-publica-del-backend>/api/v1/health` responde correctamente antes de probar el login.
 
-- Docker Desktop 4.x o superior instalado y en ejecucion.
-- Git instalado.
+Genera un secreto distinto para cada ambiente con `openssl rand -base64 32`. Usa HTTPS en internet y `COOKIE_SECURE=true`; no habilites el modo demo en un despliegue publico.
 
-#### Pasos de ejecucion
+### Ejecucion local con Docker (recomendada)
 
-1. Clonar el repositorio:
-   ```
+#### Requisitos
+
+- Git y Docker Desktop instalados y en ejecucion.
+- Una aplicacion registrada en Microsoft Entra ID con plataforma SPA y redirect URI local `http://localhost:3000/auth`.
+- El `Tenant ID` y `Application (client) ID` de esa aplicacion.
+
+#### Pasos
+
+1. Clona el repositorio y entra a su carpeta:
+   ```powershell
    git clone https://github.com/ilc2308/UPBConecta.git
    cd UPBConecta
    ```
+2. Copia el ejemplo de configuracion y genera una clave JWT:
+   ```powershell
+   Copy-Item .env.example .env
+   openssl rand -base64 32
+   ```
+3. Edita `.env` y reemplaza los valores de ejemplo:
+   - `AZURE_TENANT_ID`: Tenant ID de Entra ID.
+   - `AZURE_CLIENT_ID`: Application (client) ID de Entra ID.
+   - `VITE_AZURE_TENANT_ID` y `VITE_AZURE_CLIENT_ID`: usa los mismos valores.
+   - `JWT_SECRET`: resultado de `openssl rand -base64 32`.
+   - `VITE_API_URL=http://localhost:8080/api/v1`.
+   - `CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173`.
+   - Para desarrollo local, `COOKIE_SECURE=false` y `DEMO_ENABLED=false`.
 
-2. Crear el archivo de variables de entorno:
-   ```
-   copy .env.example .env
-   ```
-   Abrir `.env` y configurar las credenciales de base de datos:
-   - DB_HOST=localhost
-   - DB_PORT=5432
-   - DB_NAME=upbconecta
-   - DB_USER=upbconecta_user
-   - DB_PASSWORD=upbconecta_password_2026
-
-3. Levantar todos los servicios con Docker:
-   ```
+   Conserva las credenciales de base de datos de ejemplo para uso local. No compartas ni subas `.env` a Git.
+4. Construye y levanta la base de datos, el backend y el frontend:
+   ```powershell
    docker compose up --build
    ```
+5. Abre `http://localhost:3000`. La API está en `http://localhost:8080/api/v1/health`.
+6. Para detener los servicios, pulsa `Ctrl+C`; para iniciarlos después en segundo plano, usa `docker compose up -d`.
 
-4. Acceder a la plataforma:
-   - Frontend: http://localhost:3000
-   - API Backend: http://localhost:8080/api/v1/health
-   - Base de datos PostgreSQL: localhost:5432
+### Como autenticarse con el correo Microsoft de la UPB
+
+1. En la aplicación, pulsa **Continuar con Microsoft** e inicia sesion usando la cuenta institucional completa, terminada en `@upb.edu.co`.
+2. Si es el primer ingreso, selecciona el rol **Estudiante** o **Empleador**, escribe la carrera y confirma el registro.
+3. Al completar el registro, la aplicación crea la cuenta y abre el dashboard. En los siguientes ingresos, basta con continuar con Microsoft; no se vuelve a crear la cuenta.
+4. Las cuentas fuera del dominio `@upb.edu.co` no pueden registrarse. Si el correo ya está registrado, inicia sesión con Microsoft en lugar de volver a registrarlo.
+
+Si el botón Microsoft aparece deshabilitado o informa que no está configurado, revisa `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `VITE_AZURE_TENANT_ID` y `VITE_AZURE_CLIENT_ID`, y comprueba que el redirect URI coincide exactamente con la URL usada para abrir el frontend. En el despliegue en internet, estos valores debe configurarlos quien administra los servicios de nube y la aplicación Entra ID de la universidad.
+
+Consulta [docs/AUTENTICACION.md](docs/AUTENTICACION.md) para más información sobre las variables, los endpoints y el modo demo.
 
 ## Guia basica de uso de la aplicacion
 
-1. Ingresar a [https://upbconecta-frontend.onrender.com](https://upbconecta-frontend.onrender.com) (o http://localhost:3000 si se ejecuta localmente) y autenticarse con cuenta institucional @upb.edu.co.
+1. Ingresar al frontend desplegado o a `http://localhost:3000` si se ejecuta localmente, y autenticarse con una cuenta Microsoft institucional `@upb.edu.co`.
 2. En el Dashboard explorar las solicitudes activas filtradas por ubicacion o urgencia.
 3. Para publicar un encargo: clic en Publicar, ingresar titulo, descripcion, ubicacion en el campus, valor ofrecido y plazo.
 4. Para postularse: abrir el detalle de una oferta y seleccionar Postularse. El solicitante revisara los perfiles y asignara al encargado.
