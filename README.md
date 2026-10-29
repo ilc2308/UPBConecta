@@ -86,13 +86,13 @@ https://upbconecta.atlassian.net/jira/software/projects/UPBCONECT/boards/2/backl
 - Diseno y wireframes: https://www.figma.com/make/XmldQdk9JJvw7BcyZnOagr/Wireframes-media-fidelidad-UpbConecta?fullscreen=1&t=BuNbJ0x1JjYviIdB-1&code-node-id=0-6
 - Prototipo interactivo navegable: https://www.figma.com/proto/u9yzIadLRLYvwg3TZiPDkd/Untitled?node-id=3-7&t=A2nrPhqUf6FTkIpH-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1
 
-## Integrantes del equipo
+## Documentación
+- Autenticación y modo demo: [docs/AUTENTICACION.md](docs/AUTENTICACION.md)
+
+- ## Integrantes del equipo
 
 - Tatiana Maria Ramirez Arroyave
-- Ismael Lopez Cardozo
+- Ismael López Cardozo
 - Thomas Sining Salazar
 - Fredy Manuel Guzman Herrera
 - Maria Fernanda Toro Torres
-
-## Documentación
-- Autenticación y modo demo: [docs/AUTENTICACION.md](docs/AUTENTICACION.md)
