@@ -1,19 +1,4 @@
-/* Pantalla "Publicar trabajo" segun el prototipo de Figma. Colores de variables.css. */
-
-.migas {
-  margin: 0 0 4px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-fucsia);
-}
-
-.titulo {
-  margin: 0 0 20px;
-  font-size: 1.9rem;
-  font-weight: 400;
-}
+/* Pantalla "Publicar trabajo" segun el prototipo de Figma. Migas, titulo y notas en ofertas.module.css. */
 
 .formulario {
   display: grid;
@@ -95,49 +80,6 @@ textarea.entrada {
   align-items: flex-start;
   gap: 16px;
   margin-top: 24px;
-}
-
-.nota {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  background: var(--color-fondo);
-  border: 1px solid var(--color-borde);
-}
-
-.check {
-  display: inline-grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  font-size: 0.7rem;
-  color: var(--color-blanco);
-  background: var(--color-fucsia);
-}
-
-.notaError {
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.publicar {
-  min-width: 150px;
-  padding: 12px 24px;
-  border-radius: 0;
-  background: var(--color-fucsia);
-}
-
-.publicar:hover {
-  background: var(--color-rojo);
-}
-
-.publicar:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 @media (max-width: 720px) {

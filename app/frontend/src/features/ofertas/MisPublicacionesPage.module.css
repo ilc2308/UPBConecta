@@ -1,0 +1,107 @@
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.cabecera h1 {
+  margin: 0;
+}
+
+.exito {
+  margin-bottom: 20px;
+}
+
+.vacio {
+  color: var(--color-texto-suave);
+  text-align: center;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oferta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nueva {
+  border-color: var(--color-fucsia);
+  box-shadow: 0 0 0 2px var(--color-fucsia-claro);
+}
+
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nombre {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.etiquetas {
+  display: flex;
+  gap: 6px;
+}
+
+.etiqueta {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-morado);
+  background: var(--color-morado-claro);
+}
+
+.urgente {
+  color: var(--color-fucsia);
+  background: var(--color-fucsia-claro);
+}
+
+.actividad {
+  margin: 0;
+  color: var(--color-texto-suave);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 4px 0 0;
+}
+
+.datos dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-texto-suave);
+}
+
+.datos dd {
+  margin: 0;
+}
+
+.publicada {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-texto-suave);
+}
