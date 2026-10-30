@@ -56,3 +56,10 @@ a {
 .boton-secundario:hover {
   background: var(--color-fucsia-claro);
 }
+
+.acciones-dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 16px;
+}

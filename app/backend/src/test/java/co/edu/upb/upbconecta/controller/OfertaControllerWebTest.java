@@ -4,6 +4,7 @@ import co.edu.upb.upbconecta.config.CorsConfig;
 import co.edu.upb.upbconecta.config.SecurityConfig;
 import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
 import co.edu.upb.upbconecta.service.OfertaService;
 import co.edu.upb.upbconecta.service.SesionService;
 import jakarta.servlet.http.Cookie;
@@ -18,17 +19,23 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** POST /api/v1/ofertas (UPBCONECT-39) con la seguridad real: 201 con sesion, 400 con datos invalidos, 401 sin sesion. */
+/**
+ * Endpoints de ofertas con la seguridad real.
+ * POST /api/v1/ofertas (UPBCONECT-39 y 40): 201 con sesion, 400 datos invalidos, 401 sin sesion, 409 duplicado.
+ * GET /api/v1/ofertas/mias (UPBCONECT-40): 200 con las publicaciones del usuario, 401 sin sesion.
+ */
 @WebMvcTest(OfertaController.class)
 @Import({SecurityConfig.class, CorsConfig.class, SesionService.class, OfertaControllerWebTest.ConSeguridad.class})
 class OfertaControllerWebTest {
@@ -102,5 +109,34 @@ class OfertaControllerWebTest {
                .andExpect(status().isUnauthorized());
 
         verify(ofertaService, never()).crear(any(), any());
+    }
+
+    @Test
+    void envioDuplicadoResponde409() throws Exception {
+        when(ofertaService.crear(any(), eq(usuario)))
+                .thenThrow(new ConflictoNegocioException("Ya publicaste esta oferta hace un momento"));
+
+        mockMvc.perform(post("/api/v1/ofertas").cookie(sesion())
+                        .contentType(MediaType.APPLICATION_JSON).content(VALIDA))
+               .andExpect(status().isConflict())
+               .andExpect(jsonPath("$.detail").value("Ya publicaste esta oferta hace un momento"));
+    }
+
+    @Test
+    void misPublicacionesDevuelveLasDelUsuarioDeLaSesion() throws Exception {
+        when(ofertaService.misOfertas(usuario)).thenReturn(List.of(new OfertaDTO(7L, "Tutoria de calculo",
+                "Repasar derivadas", "Llevar apuntes", 20000, LocalDateTime.of(2099, 1, 1, 10, 0), false,
+                "Bloque 10", EstadoOferta.ABIERTA, LocalDateTime.now(), "demo@upb.edu.co")));
+
+        mockMvc.perform(get("/api/v1/ofertas/mias").cookie(sesion()))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.length()").value(1))
+               .andExpect(jsonPath("$[0].titulo").value("Tutoria de calculo"));
+    }
+
+    @Test
+    void misPublicacionesSinSesionResponde401() throws Exception {
+        mockMvc.perform(get("/api/v1/ofertas/mias"))
+               .andExpect(status().isUnauthorized());
     }
 }

@@ -1,27 +1,38 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import axios from 'axios'
+import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../../Header'
 import { useAuth } from '../../AuthContext'
 import { ofertasApi } from './ofertasApi'
+import { ConfirmarPublicacionModal } from './ConfirmarPublicacionModal'
 import { FORMULARIO_VACIO, LIMITES, formatearMiles, validarOferta } from './validarOferta'
 import type { CampoOferta, ErroresOferta, FormularioOferta } from './validarOferta'
+import comun from './ofertas.module.css'
 import styles from './PostJobPage.module.css'
 
+/** Lo que recibe "Mis publicaciones" al llegar desde aqui, para mostrar "¡Publicado!". */
+export interface EstadoPublicada {
+  publicadaId: number
+}
+
 /**
- * Formulario "Publicar trabajo" (UPBCONECT-39). Cualquier usuario autenticado puede publicar.
- * - Valida igual que el backend y deshabilita "Publicar" mientras haya errores.
+ * Formulario "Publicar trabajo". Cualquier usuario autenticado puede publicar.
+ * - UPBCONECT-39: valida igual que el backend y deshabilita "Publicar" mientras haya errores.
+ * - UPBCONECT-40: "Publicar" abre un resumen; al confirmar se envia una sola vez y se va a
+ *   "Mis publicaciones". Si falla, los datos siguen en el formulario.
  * - El publicador lo pone el backend a partir de la sesion; no viaja en el formulario.
- * TODO(UPBCONECT-40): resumen de confirmacion antes de publicar y redireccion a "Mis publicaciones".
  * TODO(UPBCONECT-37): mostrar dentro del layout con menu lateral cuando exista.
  */
 export function PostJobPage() {
   const { cerrarSesion } = useAuth()
+  const navigate = useNavigate()
   const [form, setForm] = useState<FormularioOferta>(FORMULARIO_VACIO)
   const [tocados, setTocados] = useState<Partial<Record<CampoOferta, boolean>>>({})
   const [erroresServidor, setErroresServidor] = useState<ErroresOferta>({})
+  const [confirmando, setConfirmando] = useState(false)
   const [enviando, setEnviando] = useState(false)
-  const [resultado, setResultado] = useState<'exito' | 'error' | null>(null)
+  const [errorGeneral, setErrorGeneral] = useState<string | null>(null)
 
   const errores = validarOferta(form)
   const esValido = Object.keys(errores).length === 0
@@ -29,7 +40,7 @@ export function PostJobPage() {
   function cambiar<K extends keyof FormularioOferta>(campo: K, valor: FormularioOferta[K]) {
     setForm((f) => ({ ...f, [campo]: valor }))
     setErroresServidor((e) => ({ ...e, [campo]: undefined }))
-    setResultado(null)
+    setErrorGeneral(null)
   }
 
   const tocar = (campo: CampoOferta) => setTocados((t) => ({ ...t, [campo]: true }))
@@ -37,13 +48,16 @@ export function PostJobPage() {
   // Un campo muestra su error cuando el usuario ya paso por el, o si el servidor lo rechazo.
   const errorDe = (campo: CampoOferta) => erroresServidor[campo] ?? (tocados[campo] ? errores[campo] : undefined)
 
-  async function publicar(e: FormEvent) {
+  function revisar(e: FormEvent) {
     e.preventDefault()
-    if (!esValido || enviando) return
+    if (esValido) setConfirmando(true)
+  }
 
+  async function confirmar() {
+    if (enviando) return // evita el doble envio si se pulsa varias veces
     setEnviando(true)
     try {
-      await ofertasApi.crear({
+      const creada = await ofertasApi.crear({
         titulo: form.titulo.trim(),
         actividad: form.actividad.trim(),
         condiciones: form.condiciones.trim(),
@@ -52,9 +66,7 @@ export function PostJobPage() {
         urgente: form.urgente,
         ubicacion: form.ubicacion.trim(),
       })
-      setForm(FORMULARIO_VACIO)
-      setTocados({})
-      setResultado('exito')
+      navigate('/mis-publicaciones', { state: { publicadaId: creada.id } satisfies EstadoPublicada })
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         await cerrarSesion() // la sesion expiro: ProtectedRoute lleva a /auth
@@ -62,8 +74,8 @@ export function PostJobPage() {
       }
       // Los datos se conservan para que el usuario pueda corregir y reintentar.
       setErroresServidor(erroresDelServidor(err))
-      setResultado('error')
-    } finally {
+      setErrorGeneral(mensajeDeError(err))
+      setConfirmando(false)
       setEnviando(false)
     }
   }
@@ -81,10 +93,10 @@ export function PostJobPage() {
     <>
       <Header />
       <main className="contenedor">
-        <p className={styles.migas}>Mis publicaciones / Nueva</p>
-        <h1 className={styles.titulo}>Publicar trabajo</h1>
+        <p className={comun.migas}><Link to="/mis-publicaciones">Mis publicaciones</Link> / Nueva</p>
+        <h1 className={comun.titulo}>Publicar trabajo</h1>
 
-        <form className={`tarjeta ${styles.formulario}`} onSubmit={publicar} noValidate>
+        <form className={`tarjeta ${styles.formulario}`} onSubmit={revisar} noValidate>
           <div className={styles.columna}>
             <Campo id="titulo" etiqueta="Nombre de la publicación" error={errorDe('titulo')}>
               <input {...props('titulo')} type="text" maxLength={LIMITES.titulo}
@@ -129,23 +141,24 @@ export function PostJobPage() {
           </div>
 
           <div className={styles.acciones}>
-            {resultado === 'exito' && (
-              <p className={styles.nota} role="status">
-                <span className={styles.check} aria-hidden="true">✓</span>
-                La publicación fue creada correctamente
-              </p>
+            {errorGeneral && (
+              <p className={`${comun.nota} ${comun.notaError}`} role="alert">{errorGeneral}</p>
             )}
-            {resultado === 'error' && (
-              <p className={`${styles.nota} ${styles.notaError}`} role="alert">
-                No se pudo publicar. Revisa los datos e inténtalo de nuevo.
-              </p>
-            )}
-            <button type="submit" className={`boton ${styles.publicar}`} disabled={!esValido || enviando}>
-              {enviando ? 'Publicando...' : 'Publicar'}
+            <button type="submit" className={`boton ${comun.botonFucsia}`} disabled={!esValido}>
+              Publicar
             </button>
           </div>
         </form>
       </main>
+
+      {confirmando && (
+        <ConfirmarPublicacionModal
+          datos={form}
+          enviando={enviando}
+          onEditar={() => setConfirmando(false)}
+          onConfirmar={confirmar}
+        />
+      )}
     </>
   )
 }
@@ -165,6 +178,15 @@ function ahoraLocal(): string {
   const d = new Date()
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
   return d.toISOString().slice(0, 16)
+}
+
+/** Mensaje para el usuario segun la respuesta del backend (409 duplicado, 400 datos, otros). */
+function mensajeDeError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    if (err.response?.status === 409) return 'Ya publicaste esta oferta hace un momento. Revisa "Mis publicaciones".'
+    if (err.response?.status === 400) return 'Revisa los campos marcados e inténtalo de nuevo.'
+  }
+  return 'No se pudo publicar. Revisa tu conexión e inténtalo de nuevo.'
 }
 
 /** Convierte el 400 del backend ({ errores: ["campo: mensaje"] }) en errores por campo. */

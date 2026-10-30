@@ -23,4 +23,6 @@ export interface Oferta extends OfertaNueva {
 // Las llamadas usan la instancia de Axios de api.ts, que envia la cookie de sesion.
 export const ofertasApi = {
   crear: async (oferta: OfertaNueva) => (await api.post<Oferta>('/ofertas', oferta)).data,
+  /** Publicaciones del usuario de la sesion, la mas reciente primero (UPBCONECT-40). */
+  mias: async () => (await api.get<Oferta[]>('/ofertas/mias')).data,
 }
