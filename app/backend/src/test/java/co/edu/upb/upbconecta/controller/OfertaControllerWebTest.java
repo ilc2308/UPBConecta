@@ -4,6 +4,7 @@ import co.edu.upb.upbconecta.config.CorsConfig;
 import co.edu.upb.upbconecta.config.SecurityConfig;
 import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
 import co.edu.upb.upbconecta.service.OfertaService;
 import co.edu.upb.upbconecta.service.SesionService;
@@ -13,8 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Endpoints de ofertas con la seguridad real.
  * POST /api/v1/ofertas (UPBCONECT-39 y 40): 201 con sesion, 400 datos invalidos, 401 sin sesion, 409 duplicado.
  * GET /api/v1/ofertas/mias (UPBCONECT-40): 200 con las publicaciones del usuario, 401 sin sesion.
+ * GET /api/v1/ofertas (UPBCONECT-37): 200 con listado paginado de ofertas activas, 401 sin sesion.
  */
 @WebMvcTest(OfertaController.class)
 @Import({SecurityConfig.class, CorsConfig.class, SesionService.class, OfertaControllerWebTest.ConSeguridad.class})
@@ -70,6 +75,8 @@ class OfertaControllerWebTest {
     private Cookie sesion() {
         return new Cookie("UPBC_SESSION", sesiones.crear(usuario));
     }
+
+    // --- UPBCONECT-39 / 40 ---
 
     @Test
     void publicaConDatosValidosYResponde201() throws Exception {
@@ -138,5 +145,52 @@ class OfertaControllerWebTest {
     void misPublicacionesSinSesionResponde401() throws Exception {
         mockMvc.perform(get("/api/v1/ofertas/mias"))
                .andExpect(status().isUnauthorized());
+    }
+
+    // --- UPBCONECT-37 ---
+
+    @Test
+    void listarActivasConSesionResponde200() throws Exception {
+        OfertaResumenDTO oferta = new OfertaResumenDTO(1L, "Apoyo en feria", "Organizar el espacio",
+                80000, LocalDateTime.of(2099, 12, 31, 18, 0), false, "Bloque 7",
+                EstadoOferta.ABIERTA, LocalDateTime.now(), "empleador@upb.edu.co");
+
+        when(ofertaService.listarActivas(anyInt(), anyInt()))
+                .thenReturn(new PageImpl<>(List.of(oferta), PageRequest.of(0, 10), 1));
+
+        mockMvc.perform(get("/api/v1/ofertas").cookie(sesion()))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.content.length()").value(1))
+               .andExpect(jsonPath("$.content[0].titulo").value("Apoyo en feria"))
+               .andExpect(jsonPath("$.content[0].estado").value("ABIERTA"))
+               .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void listarActivasSinSesionResponde401() throws Exception {
+        mockMvc.perform(get("/api/v1/ofertas"))
+               .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listarActivasConListaVaciaResponde200ConCeroElementos() throws Exception {
+        when(ofertaService.listarActivas(anyInt(), anyInt()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/ofertas").cookie(sesion()))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.content.length()").value(0));
+    }
+
+    @Test
+    void listarActivasConPaginacionResponde200() throws Exception {
+        when(ofertaService.listarActivas(anyInt(), anyInt()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/ofertas")
+                        .param("page", "0")
+                        .param("size", "5")
+                        .cookie(sesion()))
+               .andExpect(status().isOk());
     }
 }
