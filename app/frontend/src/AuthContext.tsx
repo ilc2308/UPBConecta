@@ -1,17 +1,23 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { authApi } from './authApi'
+import { configurarToken } from './api'
 
 export interface Usuario {
+  id?: string
   nombre: string
   correo: string
+  rol?: 'ESTUDIANTE' | 'EMPLEADOR'
+  carrera?: string
 }
 
 interface AuthContextValue {
   usuario: Usuario | null
   estaAutenticado: boolean
   cargando: boolean
+  accessToken: string | null
   iniciarSesionDemo: () => Promise<void>
+  completarAutenticacion: (response: { accessToken: string; usuario: Usuario }) => void
   cerrarSesion: () => Promise<void>
 }
 
@@ -19,39 +25,58 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 /**
  * Estado de autenticacion de la app.
- * - La sesion la crea el backend y viaja en una cookie HttpOnly (UPBC_SESSION):
- *   el frontend nunca ve ni guarda el token (ni localStorage ni sessionStorage).
- * - Al cargar, se consulta GET /auth/me para saber si hay sesion activa.
+ * - SSO conserva el JWT en memoria y sessionStorage durante la pestaña.
+ * - La sesión demo heredada sigue viajando en la cookie HttpOnly UPBC_SESSION.
+ * - Al cargar, se consulta GET /auth/me para validar la sesión existente.
  * - iniciarSesionDemo: modo temporal protegido por VITE_DEMO_MODE (frontend) y DEMO_ENABLED (backend).
- * - El inicio de sesion real con Microsoft (SSO) reemplaza el modo demo en UPBCONECT-5/6.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [accessToken, setAccessToken] = useState<string | null>(() => sessionStorage.getItem('upbconecta_access_token'))
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
+    configurarToken(accessToken)
     authApi
       .me()
       .then(setUsuario)
-      .catch(() => setUsuario(null))
+      .catch(() => {
+        sessionStorage.removeItem('upbconecta_access_token')
+        configurarToken(null)
+        setAccessToken(null)
+        setUsuario(null)
+      })
       .finally(() => setCargando(false))
-  }, [])
+  }, [accessToken])
 
   const iniciarSesionDemo = useCallback(async () => {
+    sessionStorage.removeItem('upbconecta_access_token')
+    configurarToken(null)
+    setAccessToken(null)
     setUsuario(await authApi.loginDemo())
+  }, [])
+
+  const completarAutenticacion = useCallback((response: { accessToken: string; usuario: Usuario }) => {
+    sessionStorage.setItem('upbconecta_access_token', response.accessToken)
+    configurarToken(response.accessToken)
+    setAccessToken(response.accessToken)
+    setUsuario(response.usuario)
   }, [])
 
   const cerrarSesion = useCallback(async () => {
     try {
       await authApi.logout()
     } finally {
+      sessionStorage.removeItem('upbconecta_access_token')
+      configurarToken(null)
+      setAccessToken(null)
       setUsuario(null)
     }
   }, [])
 
   const value = useMemo(
-    () => ({ usuario, estaAutenticado: usuario !== null, cargando, iniciarSesionDemo, cerrarSesion }),
-    [usuario, cargando, iniciarSesionDemo, cerrarSesion],
+    () => ({ usuario, estaAutenticado: usuario !== null, cargando, accessToken, iniciarSesionDemo, completarAutenticacion, cerrarSesion }),
+    [usuario, cargando, accessToken, iniciarSesionDemo, completarAutenticacion, cerrarSesion],
   )
 
   // Mientras se consulta la sesion no se muestran las rutas, para que una recarga

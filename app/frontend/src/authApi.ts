@@ -1,21 +1,21 @@
-// Llamadas de autenticacion. La sesion viaja en una cookie HttpOnly,
-// por eso todas usan credentials: 'include' y el token nunca pasa por el navegador.
-const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1').replace(/\/+$/, '');
-const API_BASE = BASE.endsWith('/api/v1') ? BASE : `${BASE}/api/v1`;
+import { api } from './api'
 
-export type Usuario = { correo: string; nombre: string };
-
-async function llamar<T>(ruta: string, metodo: 'GET' | 'POST'): Promise<T> {
-  const res = await fetch(`${API_BASE}/auth${ruta}`, {
-    method: metodo,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.status === 204 ? (undefined as T) : res.json();
+export type RolUsuario = 'ESTUDIANTE' | 'EMPLEADOR'
+export type Usuario = {
+  id?: string
+  correo: string
+  nombre: string
+  rol?: RolUsuario
+  carrera?: string
 }
+export type AuthResponse = { accessToken: string; usuario: Usuario }
 
 export const authApi = {
-  me: () => llamar<Usuario>('/me', 'GET'),
-  loginDemo: () => llamar<Usuario>('/demo', 'POST'),
-  logout: () => llamar<void>('/logout', 'POST'),
-};
+  me: async () => (await api.get<Usuario>('/auth/me')).data,
+  loginDemo: async () => (await api.post<Usuario>('/auth/demo')).data,
+  logout: async () => { await api.post('/auth/logout') },
+  loginMicrosoft: async (idToken: string) =>
+    (await api.post<AuthResponse>('/auth/microsoft/login', { idToken })).data,
+  registrarMicrosoft: async (idToken: string, rol: RolUsuario, carrera: string) =>
+    (await api.post<AuthResponse>('/auth/microsoft/register', { idToken, rol, carrera })).data,
+}
