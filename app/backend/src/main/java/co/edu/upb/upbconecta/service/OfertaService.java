@@ -1,10 +1,15 @@
 package co.edu.upb.upbconecta.service;
 
+import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.domain.Oferta;
 import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
 import co.edu.upb.upbconecta.repository.OfertaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +17,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** Reglas de negocio de las ofertas (UPBCONECT-39 y UPBCONECT-40). */
+/** Reglas de negocio de las ofertas (UPBCONECT-39, UPBCONECT-40 y UPBCONECT-37). */
 @Service
 public class OfertaService {
 
@@ -58,5 +63,22 @@ public class OfertaService {
         return ofertas.findByPublicadorCorreoOrderByFechaPublicacionDesc(usuario.correo()).stream()
                 .map(OfertaDTO::desde)
                 .toList();
+    }
+
+    /**
+     * Listado paginado de ofertas ABIERTAS y con fecha_limite vigente, ordenadas de la
+     * mas reciente a la mas antigua. Usado por el Dashboard (UPBCONECT-37).
+     * Solo se listan ofertas cuya fecha_limite es estrictamente posterior al momento de la consulta.
+     *
+     * @param page numero de pagina (0-based)
+     * @param size elementos por pagina (maximo 50 para evitar respuestas gigantes)
+     */
+    @Transactional(readOnly = true)
+    public Page<OfertaResumenDTO> listarActivas(int page, int size) {
+        int tamano = Math.min(size, 50);
+        PageRequest pageable = PageRequest.of(page, tamano, Sort.by(Sort.Direction.DESC, "fechaPublicacion"));
+        return ofertas
+                .findByEstadoAndFechaLimiteAfter(EstadoOferta.ABIERTA, LocalDateTime.now(), pageable)
+                .map(OfertaResumenDTO::desde);
     }
 }
