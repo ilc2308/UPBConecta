@@ -13,6 +13,7 @@ import co.edu.upb.upbconecta.repository.UsuarioRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -38,14 +39,22 @@ public class MicrosoftAuthService {
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder microsoftDecoder;
 
+    @Autowired
     public MicrosoftAuthService(
             UsuarioRepository usuarios,
             JwtEncoder jwtEncoder,
             @Value("${app.microsoft.tenant-id}") String tenantId,
             @Value("${app.microsoft.client-id}") String clientId) {
+        this(usuarios, jwtEncoder, crearDecoderMicrosoft(tenantId, clientId));
+    }
+
+    MicrosoftAuthService(
+            UsuarioRepository usuarios,
+            JwtEncoder jwtEncoder,
+            JwtDecoder microsoftDecoder) {
         this.usuarios = usuarios;
         this.jwtEncoder = jwtEncoder;
-        this.microsoftDecoder = crearDecoderMicrosoft(tenantId, clientId);
+        this.microsoftDecoder = microsoftDecoder;
     }
 
     @Transactional
@@ -88,7 +97,7 @@ public class MicrosoftAuthService {
         }
     }
 
-    private JwtDecoder crearDecoderMicrosoft(String tenantId, String clientId) {
+    private static JwtDecoder crearDecoderMicrosoft(String tenantId, String clientId) {
         if (tenantId.isBlank() || clientId.isBlank()) {
             return token -> {
                 throw new NoAutenticadoException(

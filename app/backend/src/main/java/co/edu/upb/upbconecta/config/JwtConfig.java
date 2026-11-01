@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
@@ -42,8 +43,10 @@ public class JwtConfig {
 
     @Bean
     JwtDecoder jwtDecoder(SecretKey platformJwtKey) {
-        return NimbusJwtDecoder.withSecretKey(platformJwtKey)
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(platformJwtKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer("upbconecta"));
+        return decoder;
     }
 }
