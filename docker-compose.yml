@@ -39,6 +39,9 @@ services:
       JPA_DDL_AUTO: ${JPA_DDL_AUTO}
       DEMO_ENABLED: ${DEMO_ENABLED:-false}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
     healthcheck:
@@ -53,6 +56,8 @@ services:
       context: ./app/frontend
       args:
         VITE_API_URL: ${VITE_API_URL}
+        VITE_AZURE_TENANT_ID: ${VITE_AZURE_TENANT_ID:-${AZURE_TENANT_ID}}
+        VITE_AZURE_CLIENT_ID: ${VITE_AZURE_CLIENT_ID:-${AZURE_CLIENT_ID}}
     container_name: upbconecta-frontend
     restart: unless-stopped
     depends_on:

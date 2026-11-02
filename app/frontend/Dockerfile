@@ -5,7 +5,11 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 ARG VITE_API_URL=http://localhost:8080/api/v1
+ARG VITE_AZURE_TENANT_ID
+ARG VITE_AZURE_CLIENT_ID
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_AZURE_TENANT_ID=${VITE_AZURE_TENANT_ID}
+ENV VITE_AZURE_CLIENT_ID=${VITE_AZURE_CLIENT_ID}
 RUN npm run build
 
 # Etapa 2: servir con Nginx
