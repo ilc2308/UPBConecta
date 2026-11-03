@@ -14,8 +14,9 @@
 | `VITE_AZURE_TENANT_ID` | frontend | Tenant usado por MSAL |
 | `VITE_AZURE_CLIENT_ID` | frontend | Application (client) ID usado por MSAL |
 | `JWT_SECRET` | backend | Clave Base64 de al menos 32 bytes; generar con `openssl rand -base64 32` |
+| `JWT_EXPIRATION_HOURS` | backend | Vigencia del JWT propio en horas (por defecto, `8`) |
 
-Registra `http://localhost:5173/auth` como redirect URI de tipo SPA en Entra ID. Para desarrollo local, define `VITE_AZURE_TENANT_ID` y `VITE_AZURE_CLIENT_ID` en `app/frontend/.env.development`; para Docker, configúralas en el `.env` de la raíz junto con `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` y `JWT_SECRET`. El redirect URI debe corresponder al origen público del frontend. No reutilices claves de desarrollo en producción.
+Registra `http://localhost:5173/auth` como redirect URI de tipo SPA en Entra ID. Para desarrollo local, define `VITE_AZURE_TENANT_ID` y `VITE_AZURE_CLIENT_ID` en `app/frontend/.env.development`; para Docker, configúralas en el `.env` de la raíz junto con `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` y `JWT_SECRET`. `JWT_EXPIRATION_HOURS` es opcional; usa un entero positivo y por defecto es `8`. El redirect URI debe corresponder al origen público del frontend. No reutilices claves de desarrollo en producción.
 
 ## Sesión demo heredada
 - La sesión demo se crea en el backend y viaja en una cookie `UPBC_SESSION` con atributos `HttpOnly`,
@@ -65,7 +66,7 @@ En el build de producción del frontend (`npm run build` o Docker) el botón de 
 5. Abrir `http://localhost:5173`, pulsar **"Entrar en modo demo"** y comprobar con F12 → Application:
    - En **Cookies** aparece `UPBC_SESSION` con **HttpOnly** y **SameSite=Strict**.
    - El modo demo usa cookie HttpOnly; al cerrar sesión la cookie desaparece.
-   - Las cuentas Microsoft guardan el JWT temporal en `sessionStorage`; no uses almacenamiento persistente en equipos compartidos.
+   - El inicio de sesión Microsoft guarda el JWT en `sessionStorage` por defecto. Si se selecciona **Recordarme**, se guarda en `localStorage` hasta que expire o se cierre sesión; evita esa opción en equipos compartidos.
 
 > Al abrir la app sin sesión, la consola muestra `401` en `/auth/me`: es la consulta inicial de sesión y es el comportamiento esperado.
 

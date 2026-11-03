@@ -15,6 +15,8 @@ import java.time.temporal.ChronoUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -25,6 +27,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
@@ -33,28 +36,43 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrosoftAuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(MicrosoftAuthService.class);
     private static final String DOMINIO_INSTITUCIONAL = "@upb.edu.co";
 
     private final UsuarioRepository usuarios;
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder microsoftDecoder;
+    private final long tokenExpirationHours;
 
     @Autowired
     public MicrosoftAuthService(
             UsuarioRepository usuarios,
             JwtEncoder jwtEncoder,
             @Value("${app.microsoft.tenant-id}") String tenantId,
-            @Value("${app.microsoft.client-id}") String clientId) {
-        this(usuarios, jwtEncoder, crearDecoderMicrosoft(tenantId, clientId));
+            @Value("${app.microsoft.client-id}") String clientId,
+            @Value("${app.jwt.expiration-hours:8}") long tokenExpirationHours) {
+        this(usuarios, jwtEncoder, crearDecoderMicrosoft(tenantId, clientId), tokenExpirationHours);
     }
 
     MicrosoftAuthService(
             UsuarioRepository usuarios,
             JwtEncoder jwtEncoder,
             JwtDecoder microsoftDecoder) {
+        this(usuarios, jwtEncoder, microsoftDecoder, 8);
+    }
+
+    MicrosoftAuthService(
+            UsuarioRepository usuarios,
+            JwtEncoder jwtEncoder,
+            JwtDecoder microsoftDecoder,
+            long tokenExpirationHours) {
+        if (tokenExpirationHours <= 0) {
+            throw new IllegalArgumentException("La vigencia del JWT debe ser mayor que cero horas");
+        }
         this.usuarios = usuarios;
         this.jwtEncoder = jwtEncoder;
         this.microsoftDecoder = microsoftDecoder;
+        this.tokenExpirationHours = tokenExpirationHours;
     }
 
     @Transactional
@@ -77,7 +95,7 @@ public class MicrosoftAuthService {
     public AuthResponse iniciarSesion(String idToken) {
         Identidad identidad = extraerIdentidad(validarTokenMicrosoft(idToken));
         UsuarioEntity usuario = usuarios.findByMicrosoftOid(identidad.oid())
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_REGISTERED",
                         "No existe una cuenta registrada. Completa el registro."));
         if (!usuario.isActivo()) {
             throw new AccesoDenegadoException("La cuenta esta inactiva");
@@ -124,6 +142,28 @@ public class MicrosoftAuthService {
         try {
             return microsoftDecoder.decode(idToken);
         } catch (org.springframework.security.oauth2.jwt.JwtException ex) {
+            if (ex instanceof JwtValidationException validationException) {
+                log.warn("Token Microsoft rechazado por validacion: {}",
+                        validationException.getErrors().stream()
+                                .map(error -> error.getErrorCode() + ": " + error.getDescription())
+                                .toList());
+            } else {
+                Throwable cause = ex;
+                while (cause.getCause() != null && cause.getCause() != cause) {
+                    cause = cause.getCause();
+                }
+                String detail = cause.getMessage();
+                if (detail != null) {
+                    detail = detail.replaceAll(
+                            "[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}",
+                            "[token oculto]");
+                    if (detail.length() > 300) {
+                        detail = detail.substring(0, 300);
+                    }
+                }
+                log.warn("No se pudo decodificar el token Microsoft ({}): {}",
+                        cause.getClass().getSimpleName(), detail);
+            }
             throw new NoAutenticadoException("El token de Microsoft no es valido o ha expirado");
         }
     }
@@ -149,7 +189,7 @@ public class MicrosoftAuthService {
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("upbconecta")
                 .issuedAt(ahora)
-                .expiresAt(ahora.plus(8, ChronoUnit.HOURS))
+                .expiresAt(ahora.plus(tokenExpirationHours, ChronoUnit.HOURS))
                 .subject(usuario.getId().toString())
                 .claim("rol", usuario.getRol().name())
                 .build();

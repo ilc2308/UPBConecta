@@ -16,11 +16,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 /**
  * Seguridad base de la API.
  * - El health check, los preflight de CORS y los endpoints de sesion (/auth/**) son publicos.
- * - La sesion viaja en una cookie HttpOnly que SesionCookieFilter traduce a una autenticacion.
+ * - Acepta JWT Bearer para SSO y la cookie HttpOnly para la sesión demo heredada.
  * - CSRF desactivado: la cookie es SameSite=Strict, por lo que el navegador no la envia
  *   en peticiones originadas desde otros sitios.
  * - El resto de endpoints exige autenticacion (401 si no hay sesion).
- * - El login con Microsoft (SSO) reemplazara el modo demo en UPBCONECT-5 y UPBCONECT-6.
  */
 @Configuration
 public class SecurityConfig {
