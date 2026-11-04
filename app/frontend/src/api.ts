@@ -1,5 +1,11 @@
 import axios from 'axios'
 
+let accessToken: string | null = null
+
+export function configurarToken(token: string | null) {
+  accessToken = token
+}
+
 /**
  * Instancia unica de Axios para hablar con el backend.
  * La URL base sale de VITE_API_URL (ver .env.example).
@@ -12,5 +18,9 @@ export const api = axios.create({
   withCredentials: true,
 })
 
-/** @deprecated Usar cookies HttpOnly. Conservado solo para compatibilidad temporal. */
-export const TOKEN_KEY = 'upbconecta_token'
+api.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
+  return config
+})

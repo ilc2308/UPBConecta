@@ -27,3 +27,9 @@ app:
     enabled: ${DEMO_ENABLED:false}
   cookie:
     secure: ${COOKIE_SECURE:true}
+  microsoft:
+    tenant-id: ${AZURE_TENANT_ID:}
+    client-id: ${AZURE_CLIENT_ID:}
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration-hours: ${JWT_EXPIRATION_HOURS:8}
