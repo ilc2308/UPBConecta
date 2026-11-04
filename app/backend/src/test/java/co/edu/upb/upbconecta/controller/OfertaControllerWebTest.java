@@ -1,6 +1,7 @@
 package co.edu.upb.upbconecta.controller;
 
 import co.edu.upb.upbconecta.config.CorsConfig;
+import co.edu.upb.upbconecta.config.JwtConfig;
 import co.edu.upb.upbconecta.config.SecurityConfig;
 import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
@@ -37,7 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * GET /api/v1/ofertas/mias (UPBCONECT-40): 200 con las publicaciones del usuario, 401 sin sesion.
  */
 @WebMvcTest(OfertaController.class)
-@Import({SecurityConfig.class, CorsConfig.class, SesionService.class, OfertaControllerWebTest.ConSeguridad.class})
+@Import({SecurityConfig.class, CorsConfig.class, JwtConfig.class, SesionService.class,
+        OfertaControllerWebTest.ConSeguridad.class})
 class OfertaControllerWebTest {
 
     /** En Spring Boot 4 el slice @WebMvcTest no activa Spring Security por si solo. */
