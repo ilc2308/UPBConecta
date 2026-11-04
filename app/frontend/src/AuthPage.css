@@ -254,15 +254,10 @@
   animation: auth-spinner 0.7s linear infinite;
 }
 
-.auth__error,
 .auth__configuracion {
   margin: 16px 0 0;
   font-size: 12px;
   line-height: 1.5;
-}
-
-.auth__error {
-  color: #a30c2b;
 }
 
 .auth__configuracion {

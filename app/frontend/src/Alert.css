@@ -1,0 +1,31 @@
+.alert {
+  margin-top: 16px;
+  padding: 12px 14px;
+  color: #86102a;
+  background: #fff1f3;
+  border: 1px solid #e6a3b0;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.alert__message {
+  margin: 0;
+}
+
+.alert__action {
+  margin-top: 8px;
+  padding: 0;
+  color: #86102a;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.alert__action:focus-visible {
+  outline: 2px solid #a63cff;
+  outline-offset: 3px;
+}
