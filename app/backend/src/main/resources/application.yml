@@ -32,3 +32,4 @@ app:
     client-id: ${AZURE_CLIENT_ID:}
   jwt:
     secret: ${JWT_SECRET:}
+    expiration-hours: ${JWT_EXPIRATION_HOURS:8}

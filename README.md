@@ -33,7 +33,7 @@ La disponibilidad y el inicio de sesion dependen de que los servicios de nube es
 
 Para publicar la aplicacion en internet se necesitan un servicio PostgreSQL, el backend Spring Boot y el frontend. Configura las variables en el panel de Render; no subas secretos al repositorio:
 
-1. Crea una base de datos PostgreSQL y un servicio backend con Dockerfile `app/backend/Dockerfile`. En el backend configura `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JPA_DDL_AUTO=update`, `SERVER_PORT=8080`, `JWT_SECRET`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` y `CORS_ALLOWED_ORIGINS`.
+1. Crea una base de datos PostgreSQL y un servicio backend con Dockerfile `app/backend/Dockerfile`. En el backend configura `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JPA_DDL_AUTO=update`, `SERVER_PORT=8080`, `JWT_SECRET`, `JWT_EXPIRATION_HOURS` (opcional; por defecto 8), `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` y `CORS_ALLOWED_ORIGINS`.
 2. Crea el servicio frontend con Dockerfile `app/frontend/Dockerfile`. Define los argumentos de build `VITE_API_URL=https://<url-publica-del-backend>/api/v1`, `VITE_AZURE_TENANT_ID` y `VITE_AZURE_CLIENT_ID`.
 3. En `CORS_ALLOWED_ORIGINS`, especifica el origen exacto del frontend, por ejemplo `https://upbconecta-frontend.onrender.com` (sin `/` al final).
 4. En Microsoft Entra ID registra el origen publico del frontend seguido de `/auth` como redirect URI de tipo **Single-page application (SPA)**. Para la URL de ejemplo: `https://upbconecta-frontend.onrender.com/auth`.

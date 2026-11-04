@@ -13,6 +13,17 @@ const DEMO_HABILITADO = import.meta.env.VITE_DEMO_MODE === 'true'
 const TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID
 const CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID
 
+function MicrosoftMark() {
+  return (
+    <span className="auth__microsoft-mark" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+      <i />
+    </span>
+  )
+}
+
 export function AuthPage() {
   const { estaAutenticado, iniciarSesionDemo, completarAutenticacion } = useAuth()
   const navigate = useNavigate()
@@ -21,6 +32,7 @@ export function AuthPage() {
   const [rol, setRol] = useState<RolUsuario | ''>('')
   const [carrera, setCarrera] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [recordarme, setRecordarme] = useState(false)
 
   if (estaAutenticado) {
     return <Navigate to="/dashboard" replace />
@@ -56,13 +68,16 @@ export function AuthPage() {
       const result = await msal.loginPopup({ scopes: ['openid', 'profile', 'email'] })
       if (!result.idToken) throw new Error('Microsoft no devolvió un id_token.')
       try {
-        completarAutenticacion(await authApi.loginMicrosoft(result.idToken))
+        completarAutenticacion(await authApi.loginMicrosoft(result.idToken), recordarme)
         navigate('/dashboard')
       } catch (loginError) {
-        if (isAxiosError(loginError) && loginError.response?.status === 404) {
+        const code = isAxiosError(loginError) ? loginError.response?.data?.code : undefined
+        if (isAxiosError(loginError) && (loginError.response?.status === 404 || code === 'USER_NOT_REGISTERED')) {
           setIdToken(result.idToken)
         } else if (isAxiosError(loginError) && loginError.response?.status === 403) {
           setError('Solo se permiten cuentas con dominio institucional @upb.edu.co.')
+        } else if (isAxiosError(loginError) && typeof loginError.response?.data?.detail === 'string') {
+          setError(loginError.response.data.detail)
         } else {
           throw loginError
         }
@@ -80,7 +95,7 @@ export function AuthPage() {
     setError(null)
     setCargando(true)
     try {
-      completarAutenticacion(await authApi.registrarMicrosoft(idToken, rol, carrera.trim()))
+      completarAutenticacion(await authApi.registrarMicrosoft(idToken, rol, carrera.trim()), recordarme)
       navigate('/dashboard')
     } catch (registerError) {
       const status = isAxiosError(registerError) ? registerError.response?.status : undefined
@@ -99,19 +114,46 @@ export function AuthPage() {
 
   return (
     <main className="auth">
-      <section className="tarjeta auth__tarjeta">
-        <h1>
-          UPB <span className="auth__acento">Conecta</span>
-        </h1>
-        <p>Conectamos a estudiantes de la UPB con oportunidades de trabajo.</p>
+      <div className="auth__browser" aria-hidden="true">
+        <span className="auth__browser-dots"><i /><i /><i /></span>
+        <span className="auth__browser-address">upbconecta.edu.co</span>
+      </div>
+      <section className="auth__tarjeta" aria-labelledby="auth-title">
+        <div className="auth__logo" aria-hidden="true">U</div>
+        <p className="auth__eyebrow">PLATAFORMA UNIVERSITARIA</p>
+        <h1 id="auth-title">{idToken ? 'Completa tu registro' : <>Bienvenido a<br />UPB Conecta</>}</h1>
+        <p className="auth__intro">
+          Conecta, colabora y encuentra oportunidades en la comunidad UPB.
+        </p>
 
         {!idToken ? (
-          <button className="boton auth__microsoft" onClick={continuarConMicrosoft} disabled={cargando || !TENANT_ID || !CLIENT_ID}>
-            {cargando ? <><span className="auth__spinner" aria-hidden="true" />Conectando con Microsoft...</> : 'Continuar con Microsoft'}
-          </button>
+          <>
+            <div className="auth__divider"><span>ACCESO INSTITUCIONAL</span></div>
+            <p className="auth__copy">
+              Ingresa con tu cuenta institucional. Serás redirigido al inicio de sesión seguro de Microsoft UPB.
+            </p>
+            <button
+              className="boton auth__microsoft"
+              onClick={continuarConMicrosoft}
+              disabled={cargando || !TENANT_ID || !CLIENT_ID}
+            >
+              {cargando
+                ? <><span className="auth__spinner" aria-hidden="true" />Conectando con Microsoft...</>
+                : <><MicrosoftMark /><span>Continuar con Microsoft UPB</span><b aria-hidden="true">→</b></>}
+            </button>
+            <label className="auth__remember">
+              <input
+                type="checkbox"
+                checked={recordarme}
+                onChange={(event) => setRecordarme(event.target.checked)}
+              />
+              Recordarme en este dispositivo
+            </label>
+            <small className="auth__help">Usa tu correo institucional terminado en @upb.edu.co</small>
+          </>
         ) : (
           <form className="auth__formulario" onSubmit={registrar}>
-            <h2>Completa tu registro</h2>
+            <p>Regístrate para empezar a colaborar con la comunidad UPB.</p>
             <label>
               Rol
               <select
@@ -137,20 +179,18 @@ export function AuthPage() {
           </form>
         )}
 
-        {/* Modo demo: solo visible cuando VITE_DEMO_MODE=true */}
-        {DEMO_HABILITADO && (
-          <button className="boton btn-demo" onClick={entrarModoDemo} disabled={cargando}>
-            Entrar en modo demo
-          </button>
-        )}
-
-        {error && <p role="alert">{error}</p>}
+        {error && <p className="auth__error" role="alert">{error}</p>}
         {(!TENANT_ID || !CLIENT_ID) && (
           <p className="auth__configuracion">El acceso Microsoft requiere configurar el tenant y el cliente de Entra ID.</p>
         )}
-
-        <ApiStatus />
+        {DEMO_HABILITADO && (
+          <button className="boton auth__demo" onClick={entrarModoDemo} disabled={cargando}>
+            Entrar en modo demo
+          </button>
+        )}
+        <div className="auth__api-status"><ApiStatus /></div>
       </section>
+      <p className="auth__footer">UPB CONECTA · PLATAFORMA DE COLABORACIÓN</p>
     </main>
   )
 }

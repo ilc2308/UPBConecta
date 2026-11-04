@@ -123,6 +123,9 @@ class MicrosoftAuthServiceTest {
                 () -> service.iniciarSesion(token("persona@upb.edu.co", ISSUER, CLIENT_ID)));
 
         assertEquals(HttpStatus.NOT_FOUND, statusOf(exception));
+        assertEquals("USER_NOT_REGISTERED", exception.code());
+        assertEquals("USER_NOT_REGISTERED",
+                new GlobalExceptionHandler().noEncontrado(exception).getProperties().get("code"));
     }
 
     @Test

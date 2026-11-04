@@ -42,6 +42,8 @@ services:
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
       JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-8}
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
     ports:
       - "8080:8080"
     healthcheck:

@@ -15,6 +15,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,7 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * GET /api/v1/ofertas/mias (UPBCONECT-40): 200 con las publicaciones del usuario, 401 sin sesion.
  */
 @WebMvcTest(OfertaController.class)
-@Import({SecurityConfig.class, CorsConfig.class, SesionService.class, OfertaControllerWebTest.ConSeguridad.class})
+@Import({SecurityConfig.class, CorsConfig.class, SesionService.class,
+        OfertaControllerWebTest.ConSeguridad.class})
 class OfertaControllerWebTest {
 
     /** En Spring Boot 4 el slice @WebMvcTest no activa Spring Security por si solo. */
@@ -61,6 +63,9 @@ class OfertaControllerWebTest {
 
     @Autowired
     SesionService sesiones;
+
+    @MockitoBean
+    JwtDecoder jwtDecoder;
 
     @MockitoBean
     OfertaService ofertaService;
