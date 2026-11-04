@@ -71,13 +71,22 @@ En el build de producción del frontend (`npm run build` o Docker) el botón de 
 > Al abrir la app sin sesión, la consola muestra `401` en `/auth/me`: es la consulta inicial de sesión y es el comportamiento esperado.
 
 ## Manejo de errores de la API
-Todas las respuestas de error usan el formato estándar `ProblemDetail` (RFC 9457):
+Los endpoints de autenticación (`/api/v1/auth/**`) responden con el formato:
+
+```json
+{ "codigo": "INVALID_TOKEN", "mensaje": "El token no es válido o ha vencido.", "timestamp": "2026-11-04T18:20:00Z" }
+```
+
+La interfaz traduce los códigos a mensajes seguros en español y no muestra detalles técnicos del servidor. Los códigos de autenticación son:
 
 | Código | Cuándo |
 |---|---|
-| 400 | JSON inválido o datos que no pasan la validación |
-| 401 | No hay sesión activa |
-| 403 | Acceso denegado (por ejemplo, modo demo desactivado) |
-| 404 | Recurso no encontrado |
-| 409 | Conflicto de negocio |
-| 500 | Error interno (el detalle queda en el log, no en la respuesta) |
+| `INVALID_TOKEN` | Token inválido, vencido o falta de autenticación |
+| `DOMAIN_NOT_ALLOWED` | La cuenta no pertenece al dominio institucional |
+| `USER_NOT_REGISTERED` | El usuario debe completar su registro |
+| `PROVIDER_UNAVAILABLE` | Microsoft o el servicio de autenticación no está disponible |
+| `INVALID_REQUEST` | La solicitud no tiene el formato esperado |
+| `FORBIDDEN` | La cuenta no está autorizada para acceder |
+| `CONFLICT` | La cuenta ya existe o hay un conflicto de negocio |
+
+Las respuestas de error de otros controladores mantienen su formato vigente.

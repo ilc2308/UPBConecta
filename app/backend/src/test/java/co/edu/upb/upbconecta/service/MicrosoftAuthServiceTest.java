@@ -15,8 +15,8 @@ import javax.crypto.spec.SecretKeySpec;
 
 import co.edu.upb.upbconecta.controller.GlobalExceptionHandler;
 import co.edu.upb.upbconecta.exception.AccesoDenegadoException;
+import co.edu.upb.upbconecta.exception.AuthFailureException;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
-import co.edu.upb.upbconecta.exception.NoAutenticadoException;
 import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
 import co.edu.upb.upbconecta.model.RolUsuario;
 import co.edu.upb.upbconecta.model.UsuarioEntity;
@@ -72,33 +72,36 @@ class MicrosoftAuthServiceTest {
     }
 
     @Test
-    void correoFueraDelDominioDevuelve403() {
-        AccesoDenegadoException exception = assertThrows(
-                AccesoDenegadoException.class,
+    void correoFueraDelDominioDevuelveCodigoEspecifico() {
+        AuthFailureException exception = assertThrows(
+                AuthFailureException.class,
                 () -> service.registrar(token("outside@example.com", ISSUER, CLIENT_ID),
                         RolUsuario.ESTUDIANTE, "Ingenieria"));
 
-        assertEquals(HttpStatus.FORBIDDEN, statusOf(exception));
+        assertEquals(HttpStatus.FORBIDDEN, exception.status());
+        assertEquals("DOMAIN_NOT_ALLOWED", exception.codigo());
     }
 
     @Test
-    void issuerIncorrectoDevuelve401() {
-        NoAutenticadoException exception = assertThrows(
-                NoAutenticadoException.class,
+    void issuerIncorrectoDevuelveTokenInvalido() {
+        AuthFailureException exception = assertThrows(
+                AuthFailureException.class,
                 () -> service.registrar(token("persona@upb.edu.co", "https://issuer-incorrecto", CLIENT_ID),
                         RolUsuario.ESTUDIANTE, "Ingenieria"));
 
-        assertEquals(HttpStatus.UNAUTHORIZED, statusOf(exception));
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status());
+        assertEquals("INVALID_TOKEN", exception.codigo());
     }
 
     @Test
-    void audienceIncorrectoDevuelve401() {
-        NoAutenticadoException exception = assertThrows(
-                NoAutenticadoException.class,
+    void audienceIncorrectoDevuelveTokenInvalido() {
+        AuthFailureException exception = assertThrows(
+                AuthFailureException.class,
                 () -> service.registrar(token("persona@upb.edu.co", ISSUER, "another-client"),
                         RolUsuario.ESTUDIANTE, "Ingenieria"));
 
-        assertEquals(HttpStatus.UNAUTHORIZED, statusOf(exception));
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.status());
+        assertEquals("INVALID_TOKEN", exception.codigo());
     }
 
     @Test
@@ -159,6 +162,9 @@ class MicrosoftAuthServiceTest {
     }
 
     private HttpStatus statusOf(RuntimeException exception) {
+        if (exception instanceof AuthFailureException authFailure) {
+            return authFailure.status();
+        }
         if (exception instanceof ResourceNotFoundException notFound) {
             return HttpStatus.valueOf(new GlobalExceptionHandler().noEncontrado(notFound).getStatus());
         }

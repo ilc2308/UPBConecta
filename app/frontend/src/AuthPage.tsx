@@ -6,12 +6,56 @@ import { PublicClientApplication } from '@azure/msal-browser'
 import { useAuth } from './AuthContext'
 import { authApi, type RolUsuario } from './authApi'
 import { ApiStatus } from './ApiStatus'
+import { Alert } from './Alert'
 import './AuthPage.css'
 
 /** Solo true si VITE_DEMO_MODE=true en .env.development (nunca en produccion). */
 const DEMO_HABILITADO = import.meta.env.VITE_DEMO_MODE === 'true'
 const TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID
 const CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID
+
+function getApiErrorCode(error: unknown): string | undefined {
+  if (!isAxiosError(error)) return undefined
+  const data: unknown = error.response?.data
+  if (typeof data !== 'object' || data === null) return undefined
+  if ('codigo' in data && typeof data.codigo === 'string') return data.codigo
+  if ('code' in data && typeof data.code === 'string') return data.code
+  return undefined
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+  return isAxiosError(error) ? error.response?.status : undefined
+}
+
+function getMsalErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('errorCode' in error)) return undefined
+  return typeof error.errorCode === 'string' ? error.errorCode : undefined
+}
+
+function messageForAuthError(code: string | undefined, status?: number): string {
+  if (code === 'DOMAIN_NOT_ALLOWED') {
+    return 'Solo se permiten cuentas institucionales de la UPB'
+  }
+  if (code === 'INVALID_TOKEN' || status === 401) {
+    return 'El token no es válido o ha vencido. Intenta iniciar sesión nuevamente.'
+  }
+  if (code === 'PROVIDER_UNAVAILABLE') {
+    return 'El servicio de Microsoft no está disponible. Inténtalo de nuevo más tarde.'
+  }
+  return 'No se pudo completar el inicio de sesión. Inténtalo nuevamente.'
+}
+
+function messageForMsalError(code: string | undefined): string {
+  const codigo = code?.toLowerCase()
+  if (codigo === 'invalid_grant' || codigo === 'invalid_token') {
+    return 'El token no es válido o ha vencido. Intenta iniciar sesión nuevamente.'
+  }
+  if (['no_network_connectivity', 'post_request_failed', 'get_request_failed', 'network_error',
+    'temporarily_unavailable', 'server_error'].includes(codigo ?? '')) {
+    return 'El servicio de Microsoft no está disponible. Inténtalo de nuevo más tarde.'
+  }
+  return 'No se pudo completar el inicio de sesión. Inténtalo nuevamente.'
+}
 
 function MicrosoftMark() {
   return (
@@ -27,7 +71,7 @@ function MicrosoftMark() {
 export function AuthPage() {
   const { estaAutenticado, iniciarSesionDemo, completarAutenticacion } = useAuth()
   const navigate = useNavigate()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null)
   const [idToken, setIdToken] = useState<string | null>(null)
   const [rol, setRol] = useState<RolUsuario | ''>('')
   const [carrera, setCarrera] = useState('')
@@ -45,16 +89,17 @@ export function AuthPage() {
       await iniciarSesionDemo()
       navigate('/dashboard')
     } catch {
-      setError('No se pudo iniciar el modo demo. Verifica que el backend tenga DEMO_ENABLED=true.')
+      setError({ message: 'No se pudo iniciar la sesión. Inténtalo nuevamente.', retryable: false })
     }
   }
 
   const continuarConMicrosoft = async () => {
     if (!TENANT_ID || !CLIENT_ID) {
-      setError('El inicio de sesión institucional no está configurado. Contacta al administrador.')
+      setError({ message: 'El inicio de sesión institucional no está configurado. Contacta al administrador.', retryable: false })
       return
     }
     setError(null)
+    setIdToken(null)
     setCargando(true)
     try {
       const msal = new PublicClientApplication({
@@ -71,19 +116,24 @@ export function AuthPage() {
         completarAutenticacion(await authApi.loginMicrosoft(result.idToken), recordarme)
         navigate('/dashboard')
       } catch (loginError) {
-        const code = isAxiosError(loginError) ? loginError.response?.data?.code : undefined
-        if (isAxiosError(loginError) && (loginError.response?.status === 404 || code === 'USER_NOT_REGISTERED')) {
+        const code = getApiErrorCode(loginError)
+        if (code === 'USER_NOT_REGISTERED') {
           setIdToken(result.idToken)
-        } else if (isAxiosError(loginError) && loginError.response?.status === 403) {
-          setError('Solo se permiten cuentas con dominio institucional @upb.edu.co.')
-        } else if (isAxiosError(loginError) && typeof loginError.response?.data?.detail === 'string') {
-          setError(loginError.response.data.detail)
         } else {
-          throw loginError
+          setError({ message: messageForAuthError(code, getErrorStatus(loginError)), retryable: true })
         }
       }
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'No se pudo completar el inicio de sesión con Microsoft.')
+      const code = getMsalErrorCode(loginError)
+      const cancelado = code === 'user_cancelled'
+        || code === 'popup_window_error'
+        || code === 'monitor_window_timeout'
+      setError({
+        message: cancelado
+          ? 'Se canceló el inicio de sesión'
+          : messageForMsalError(code),
+        retryable: true,
+      })
     } finally {
       setCargando(false)
     }
@@ -98,14 +148,12 @@ export function AuthPage() {
       completarAutenticacion(await authApi.registrarMicrosoft(idToken, rol, carrera.trim()), recordarme)
       navigate('/dashboard')
     } catch (registerError) {
-      const status = isAxiosError(registerError) ? registerError.response?.status : undefined
+      const status = getErrorStatus(registerError)
       if (status === 409) {
         setIdToken(null)
-        setError('Esta cuenta ya está registrada. Pulsa continuar con Microsoft para iniciar sesión.')
+        setError({ message: 'Esta cuenta ya está registrada. Pulsa continuar con Microsoft para iniciar sesión.', retryable: true })
       } else {
-        setError(status === 403
-          ? 'Solo se permiten cuentas con dominio institucional @upb.edu.co.'
-          : 'No se pudo completar el registro. Inténtalo nuevamente.')
+        setError({ message: messageForAuthError(getApiErrorCode(registerError), status), retryable: true })
       }
     } finally {
       setCargando(false)
@@ -179,7 +227,14 @@ export function AuthPage() {
           </form>
         )}
 
-        {error && <p className="auth__error" role="alert">{error}</p>}
+        {error && (
+          <Alert
+            actionLabel={error.retryable ? 'Intentar de nuevo' : undefined}
+            onAction={error.retryable ? continuarConMicrosoft : undefined}
+          >
+            {error.message}
+          </Alert>
+        )}
         {(!TENANT_ID || !CLIENT_ID) && (
           <p className="auth__configuracion">El acceso Microsoft requiere configurar el tenant y el cliente de Entra ID.</p>
         )}

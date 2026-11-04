@@ -3,6 +3,7 @@ package co.edu.upb.upbconecta.service;
 import co.edu.upb.upbconecta.dto.AuthResponse;
 import co.edu.upb.upbconecta.dto.UsuarioResponse;
 import co.edu.upb.upbconecta.exception.AccesoDenegadoException;
+import co.edu.upb.upbconecta.exception.AuthFailureException;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
 import co.edu.upb.upbconecta.exception.NoAutenticadoException;
 import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
@@ -10,13 +11,12 @@ import co.edu.upb.upbconecta.model.RolUsuario;
 import co.edu.upb.upbconecta.model.UsuarioEntity;
 import co.edu.upb.upbconecta.repository.UsuarioRepository;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -36,7 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrosoftAuthService {
 
-    private static final Logger log = LoggerFactory.getLogger(MicrosoftAuthService.class);
     private static final String DOMINIO_INSTITUCIONAL = "@upb.edu.co";
 
     private final UsuarioRepository usuarios;
@@ -118,8 +117,9 @@ public class MicrosoftAuthService {
     private static JwtDecoder crearDecoderMicrosoft(String tenantId, String clientId) {
         if (tenantId.isBlank() || clientId.isBlank()) {
             return token -> {
-                throw new NoAutenticadoException(
-                        "El inicio de sesion Microsoft no esta configurado en el servidor");
+                throw new AuthFailureException("PROVIDER_UNAVAILABLE",
+                        "No fue posible validar tu cuenta en este momento.",
+                        org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE);
             };
         }
         String issuer = "https://login.microsoftonline.com/" + tenantId + "/v2.0";
@@ -142,29 +142,19 @@ public class MicrosoftAuthService {
         try {
             return microsoftDecoder.decode(idToken);
         } catch (org.springframework.security.oauth2.jwt.JwtException ex) {
-            if (ex instanceof JwtValidationException validationException) {
-                log.warn("Token Microsoft rechazado por validacion: {}",
-                        validationException.getErrors().stream()
-                                .map(error -> error.getErrorCode() + ": " + error.getDescription())
-                                .toList());
-            } else {
+            if (!(ex instanceof JwtValidationException)) {
                 Throwable cause = ex;
                 while (cause.getCause() != null && cause.getCause() != cause) {
                     cause = cause.getCause();
                 }
-                String detail = cause.getMessage();
-                if (detail != null) {
-                    detail = detail.replaceAll(
-                            "[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}",
-                            "[token oculto]");
-                    if (detail.length() > 300) {
-                        detail = detail.substring(0, 300);
-                    }
+                if (cause instanceof IOException) {
+                    throw new AuthFailureException("PROVIDER_UNAVAILABLE",
+                            "No fue posible validar tu cuenta en este momento.",
+                            org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE);
                 }
-                log.warn("No se pudo decodificar el token Microsoft ({}): {}",
-                        cause.getClass().getSimpleName(), detail);
             }
-            throw new NoAutenticadoException("El token de Microsoft no es valido o ha expirado");
+            throw new AuthFailureException("INVALID_TOKEN",
+                    "El token no es válido o ha vencido.", org.springframework.http.HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -174,7 +164,9 @@ public class MicrosoftAuthService {
             correo = token.getClaimAsString("email");
         }
         if (correo == null || !correo.toLowerCase(java.util.Locale.ROOT).endsWith(DOMINIO_INSTITUCIONAL)) {
-            throw new AccesoDenegadoException("Dominio de correo no permitido. Usa tu cuenta @upb.edu.co.");
+            throw new AuthFailureException("DOMAIN_NOT_ALLOWED",
+                    "Solo se permiten cuentas institucionales de la UPB.",
+                    org.springframework.http.HttpStatus.FORBIDDEN);
         }
         String oid = token.getClaimAsString("oid");
         String nombre = token.getClaimAsString("name");
