@@ -3,14 +3,18 @@ package co.edu.upb.upbconecta.controller;
 import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
+import co.edu.upb.upbconecta.exception.NoAutenticadoException;
+import co.edu.upb.upbconecta.repository.UsuarioRepository;
 import co.edu.upb.upbconecta.service.OfertaService;
 import co.edu.upb.upbconecta.service.SesionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Endpoints de ofertas de trabajo.
@@ -28,8 +33,7 @@ import java.util.List;
  * - GET  /api/v1/ofertas        : lista trabajos activos para el Dashboard (UPBCONECT-37). Exige sesion.
  * - GET  /api/v1/ofertas/mias   : publicaciones del usuario de la sesion (UPBCONECT-40).
  *
- * TODO(UPBCONECT-5/6): cuando llegue el JWT institucional, reemplazar
- *   @AuthenticationPrincipal SesionService.Usuario por el principal del JWT.
+ * Soporta tanto autenticacion JWT institucional (SSO Microsoft en produccion) como la sesion demo heredada.
  */
 @Validated
 @RestController
@@ -37,15 +41,18 @@ import java.util.List;
 public class OfertaController {
 
     private final OfertaService ofertaService;
+    private final UsuarioRepository usuarioRepository;
 
-    public OfertaController(OfertaService ofertaService) {
+    public OfertaController(OfertaService ofertaService,
+                            @Autowired(required = false) UsuarioRepository usuarioRepository) {
         this.ofertaService = ofertaService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public OfertaDTO crear(@Valid @RequestBody OfertaCreateDTO datos,
-                           @AuthenticationPrincipal SesionService.Usuario usuario) {
+    public OfertaDTO crear(@Valid @RequestBody OfertaCreateDTO datos, Authentication auth) {
+        SesionService.Usuario usuario = extraerUsuario(auth);
         return ofertaService.crear(datos, usuario);
     }
 
@@ -64,7 +71,51 @@ public class OfertaController {
     }
 
     @GetMapping("/mias")
-    public List<OfertaDTO> mias(@AuthenticationPrincipal SesionService.Usuario usuario) {
+    public List<OfertaDTO> mias(Authentication auth) {
+        SesionService.Usuario usuario = extraerUsuario(auth);
         return ofertaService.misOfertas(usuario);
+    }
+
+    private SesionService.Usuario extraerUsuario(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new NoAutenticadoException("No hay sesion activa");
+        }
+        if (auth.getPrincipal() instanceof SesionService.Usuario demoUser) {
+            return demoUser;
+        }
+        if (auth.getPrincipal() instanceof Jwt jwt) {
+            String correo = jwt.getClaimAsString("email");
+            if (correo == null || correo.isBlank()) {
+                correo = jwt.getClaimAsString("preferred_username");
+            }
+            if (correo != null && !correo.isBlank()) {
+                String nombre = jwt.getClaimAsString("nombre");
+                if (nombre == null || nombre.isBlank()) {
+                    nombre = jwt.getClaimAsString("name");
+                }
+                return new SesionService.Usuario(correo, nombre != null ? nombre : correo);
+            }
+            if (usuarioRepository != null) {
+                try {
+                    return usuarioRepository.findById(UUID.fromString(jwt.getSubject()))
+                            .map(u -> new SesionService.Usuario(u.getCorreo(), u.getNombre()))
+                            .orElseThrow(() -> new NoAutenticadoException("Usuario institucional no encontrado"));
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        String name = auth.getName();
+        if (name != null && !name.isBlank()) {
+            if (name.contains("@")) {
+                return new SesionService.Usuario(name, name);
+            }
+            if (usuarioRepository != null) {
+                try {
+                    return usuarioRepository.findById(UUID.fromString(name))
+                            .map(u -> new SesionService.Usuario(u.getCorreo(), u.getNombre()))
+                            .orElseThrow(() -> new NoAutenticadoException("Usuario institucional no encontrado"));
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        throw new NoAutenticadoException("No se pudo identificar al usuario autenticado");
     }
 }

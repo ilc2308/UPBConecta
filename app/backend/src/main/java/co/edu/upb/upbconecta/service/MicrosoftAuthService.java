@@ -191,6 +191,8 @@ public class MicrosoftAuthService {
                 .issuedAt(ahora)
                 .expiresAt(ahora.plus(tokenExpirationHours, ChronoUnit.HOURS))
                 .subject(usuario.getId().toString())
+                .claim("email", usuario.getCorreo())
+                .claim("nombre", usuario.getNombre())
                 .claim("rol", usuario.getRol().name())
                 .build();
         String token = jwtEncoder.encode(JwtEncoderParameters.from(

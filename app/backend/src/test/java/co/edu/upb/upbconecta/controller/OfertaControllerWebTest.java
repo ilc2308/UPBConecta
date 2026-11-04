@@ -83,6 +83,33 @@ class OfertaControllerWebTest {
 
     // --- UPBCONECT-39 / 40 ---
 
+
+    @Test
+    void publicaConJwtInstitucionalYResponde201() throws Exception {
+        SesionService.Usuario profe = new SesionService.Usuario("profe@upb.edu.co", "Profesor");
+        when(ofertaService.crear(any(), eq(profe))).thenReturn(new OfertaDTO(2L,
+                "Apoyo para feria de emprendimiento", "Organizar asistentes y material", "Puntualidad requerida",
+                80000, LocalDateTime.of(2099, 12, 31, 18, 0), false, "Campus UPB - Bloque 7",
+                EstadoOferta.ABIERTA, LocalDateTime.now(), "profe@upb.edu.co"));
+
+        org.springframework.security.oauth2.jwt.Jwt jwtMock = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("mock-token")
+                .header("alg", "HS256")
+                .subject(java.util.UUID.randomUUID().toString())
+                .claim("email", "profe@upb.edu.co")
+                .claim("nombre", "Profesor")
+                .issuedAt(java.time.Instant.now())
+                .expiresAt(java.time.Instant.now().plusSeconds(3600))
+                .build();
+        when(jwtDecoder.decode("mock-token")).thenReturn(jwtMock);
+
+        mockMvc.perform(post("/api/v1/ofertas")
+                        .header("Authorization", "Bearer mock-token")
+                        .contentType(MediaType.APPLICATION_JSON).content(VALIDA))
+               .andExpect(status().isCreated())
+               .andExpect(jsonPath("$.id").value(2))
+               .andExpect(jsonPath("$.publicadorCorreo").value("profe@upb.edu.co"));
+    }
+
     @Test
     void publicaConDatosValidosYResponde201() throws Exception {
         when(ofertaService.crear(any(), eq(usuario))).thenReturn(new OfertaDTO(1L,
