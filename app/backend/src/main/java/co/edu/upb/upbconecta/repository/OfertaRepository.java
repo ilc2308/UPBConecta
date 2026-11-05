@@ -1,6 +1,9 @@
 package co.edu.upb.upbconecta.repository;
 
+import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.domain.Oferta;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -15,4 +18,11 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
 
     /** Publicaciones de un usuario, la mas reciente primero. (UPBCONECT-40) */
     List<Oferta> findByPublicadorCorreoOrderByFechaPublicacionDesc(String publicadorCorreo);
+
+    /**
+     * Ofertas en un estado dado y cuya fecha_limite es posterior a "ahora".
+     * Ordenadas por fecha_publicacion descendente (el Pageable trae el Sort).
+     * Usada por el Dashboard (UPBCONECT-37).
+     */
+    Page<Oferta> findByEstadoAndFechaLimiteAfter(EstadoOferta estado, LocalDateTime ahora, Pageable pageable);
 }

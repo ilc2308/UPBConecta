@@ -1,0 +1,119 @@
+/* Layout del Dashboard con menú lateral (UPBCONECT-37). */
+
+.layout {
+  display: flex;
+  min-height: calc(100vh - 60px); /* 60px aprox altura del Header */
+}
+
+/* ── Menú lateral ───────────────────────────────────────────── */
+.lateral {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--color-negro);
+  padding: 24px 0;
+}
+
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.enlace {
+  display: block;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+
+.enlace:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-blanco);
+}
+
+.enlaceActivo {
+  color: var(--color-blanco);
+  border-left-color: var(--color-fucsia);
+  background: rgba(214, 0, 111, 0.12);
+}
+
+.enlaceDeshabilitado {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.enlaceDeshabilitado:hover {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Contenido principal ────────────────────────────────────── */
+.contenido {
+  flex: 1;
+  padding: 28px 24px;
+  overflow-y: auto;
+  max-width: 860px;
+}
+
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.titulo {
+  margin: 0 0 4px;
+  font-size: 1.6rem;
+  font-weight: 400;
+}
+
+.saludo {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-texto-suave);
+}
+
+/* ── Responsive: colapsar lateral en pantallas pequeñas ─────── */
+@media (max-width: 700px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .lateral {
+    width: 100%;
+    padding: 12px 0;
+  }
+
+  .menu {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 0;
+  }
+
+  .enlace {
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+
+  .enlaceActivo {
+    border-left-color: transparent;
+    border-bottom-color: var(--color-fucsia);
+  }
+
+  .contenido {
+    padding: 16px;
+    max-width: 100%;
+  }
+}

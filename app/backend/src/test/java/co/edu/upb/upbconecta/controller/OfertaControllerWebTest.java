@@ -4,6 +4,7 @@ import co.edu.upb.upbconecta.config.CorsConfig;
 import co.edu.upb.upbconecta.config.SecurityConfig;
 import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
 import co.edu.upb.upbconecta.service.OfertaService;
 import co.edu.upb.upbconecta.service.SesionService;
@@ -13,8 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Endpoints de ofertas con la seguridad real.
  * POST /api/v1/ofertas (UPBCONECT-39 y 40): 201 con sesion, 400 datos invalidos, 401 sin sesion, 409 duplicado.
  * GET /api/v1/ofertas/mias (UPBCONECT-40): 200 con las publicaciones del usuario, 401 sin sesion.
+ * GET /api/v1/ofertas (UPBCONECT-37): 200 con listado paginado de ofertas activas, 401 sin sesion.
  */
 @WebMvcTest(OfertaController.class)
 @Import({SecurityConfig.class, CorsConfig.class, SesionService.class,
@@ -74,6 +79,35 @@ class OfertaControllerWebTest {
 
     private Cookie sesion() {
         return new Cookie("UPBC_SESSION", sesiones.crear(usuario));
+    }
+
+    // --- UPBCONECT-39 / 40 ---
+
+
+    @Test
+    void publicaConJwtInstitucionalYResponde201() throws Exception {
+        SesionService.Usuario profe = new SesionService.Usuario("profe@upb.edu.co", "Profesor");
+        when(ofertaService.crear(any(), eq(profe))).thenReturn(new OfertaDTO(2L,
+                "Apoyo para feria de emprendimiento", "Organizar asistentes y material", "Puntualidad requerida",
+                80000, LocalDateTime.of(2099, 12, 31, 18, 0), false, "Campus UPB - Bloque 7",
+                EstadoOferta.ABIERTA, LocalDateTime.now(), "profe@upb.edu.co"));
+
+        org.springframework.security.oauth2.jwt.Jwt jwtMock = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("mock-token")
+                .header("alg", "HS256")
+                .subject(java.util.UUID.randomUUID().toString())
+                .claim("email", "profe@upb.edu.co")
+                .claim("nombre", "Profesor")
+                .issuedAt(java.time.Instant.now())
+                .expiresAt(java.time.Instant.now().plusSeconds(3600))
+                .build();
+        when(jwtDecoder.decode("mock-token")).thenReturn(jwtMock);
+
+        mockMvc.perform(post("/api/v1/ofertas")
+                        .header("Authorization", "Bearer mock-token")
+                        .contentType(MediaType.APPLICATION_JSON).content(VALIDA))
+               .andExpect(status().isCreated())
+               .andExpect(jsonPath("$.id").value(2))
+               .andExpect(jsonPath("$.publicadorCorreo").value("profe@upb.edu.co"));
     }
 
     @Test
@@ -143,5 +177,52 @@ class OfertaControllerWebTest {
     void misPublicacionesSinSesionResponde401() throws Exception {
         mockMvc.perform(get("/api/v1/ofertas/mias"))
                .andExpect(status().isUnauthorized());
+    }
+
+    // --- UPBCONECT-37 ---
+
+    @Test
+    void listarActivasConSesionResponde200() throws Exception {
+        OfertaResumenDTO oferta = new OfertaResumenDTO(1L, "Apoyo en feria", "Organizar el espacio",
+                80000, LocalDateTime.of(2099, 12, 31, 18, 0), false, "Bloque 7",
+                EstadoOferta.ABIERTA, LocalDateTime.now(), "empleador@upb.edu.co");
+
+        when(ofertaService.listarActivas(anyInt(), anyInt()))
+                .thenReturn(new PageImpl<>(List.of(oferta), PageRequest.of(0, 10), 1));
+
+        mockMvc.perform(get("/api/v1/ofertas").cookie(sesion()))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.content.length()").value(1))
+               .andExpect(jsonPath("$.content[0].titulo").value("Apoyo en feria"))
+               .andExpect(jsonPath("$.content[0].estado").value("ABIERTA"))
+               .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void listarActivasSinSesionResponde401() throws Exception {
+        mockMvc.perform(get("/api/v1/ofertas"))
+               .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listarActivasConListaVaciaResponde200ConCeroElementos() throws Exception {
+        when(ofertaService.listarActivas(anyInt(), anyInt()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/ofertas").cookie(sesion()))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.content.length()").value(0));
+    }
+
+    @Test
+    void listarActivasConPaginacionResponde200() throws Exception {
+        when(ofertaService.listarActivas(anyInt(), anyInt()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/ofertas")
+                        .param("page", "0")
+                        .param("size", "5")
+                        .cookie(sesion()))
+               .andExpect(status().isOk());
     }
 }
