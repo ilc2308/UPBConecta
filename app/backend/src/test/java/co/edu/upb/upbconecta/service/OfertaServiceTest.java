@@ -4,9 +4,15 @@ import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.domain.Oferta;
 import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
 import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
+import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
+import co.edu.upb.upbconecta.model.RolUsuario;
+import co.edu.upb.upbconecta.model.UsuarioEntity;
 import co.edu.upb.upbconecta.repository.OfertaRepository;
+import co.edu.upb.upbconecta.repository.PostulacionRepository;
+import co.edu.upb.upbconecta.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +41,12 @@ class OfertaServiceTest {
 
     @Mock
     OfertaRepository ofertas;
+
+    @Mock
+    UsuarioRepository usuarios;
+
+    @Mock
+    PostulacionRepository postulaciones;
 
     @InjectMocks
     OfertaService ofertaService;
@@ -136,5 +149,55 @@ class OfertaServiceTest {
                 eq(EstadoOferta.ABIERTA),
                 any(LocalDateTime.class),
                 org.mockito.ArgumentMatchers.argThat(p -> p.getPageSize() == 50));
+    }
+
+    // --- UPBCONECT-41 ---
+
+    private Oferta ofertaDeEmp(LocalDateTime limite) {
+        return new Oferta("Titulo", "Actividad", "Condiciones", 1000, limite, false, "Bloque 7",
+                "emp@upb.edu.co", LocalDateTime.now());
+    }
+
+    @Test
+    void detalleIncluyeDatosDelEmpleadorYSiElUsuarioYaSePostulo() {
+        when(ofertas.findById(1L)).thenReturn(Optional.of(ofertaDeEmp(LocalDateTime.now().plusDays(1))));
+        when(usuarios.findByCorreo("emp@upb.edu.co")).thenReturn(Optional.of(new UsuarioEntity(
+                "oid", "emp@upb.edu.co", "Empleador UPB", RolUsuario.EMPLEADOR, "Derecho")));
+        when(postulaciones.existsByOfertaIdAndEstudianteCorreo(1L, "ana@upb.edu.co")).thenReturn(true);
+
+        OfertaDetalleDTO detalle = ofertaService.obtenerDetalle(1L, ana);
+
+        assertThat(detalle.publicadorNombre()).isEqualTo("Empleador UPB");
+        assertThat(detalle.publicadorCarrera()).isEqualTo("Derecho");
+        assertThat(detalle.condiciones()).isEqualTo("Condiciones");
+        assertThat(detalle.disponible()).isTrue();
+        assertThat(detalle.yaPostulado()).isTrue();
+    }
+
+    @Test
+    void detalleDeOfertaVencidaNoEstaDisponible() {
+        when(ofertas.findById(1L)).thenReturn(Optional.of(ofertaDeEmp(LocalDateTime.now().minusMinutes(1))));
+        when(usuarios.findByCorreo("emp@upb.edu.co")).thenReturn(Optional.empty());
+
+        assertThat(ofertaService.obtenerDetalle(1L, ana).disponible()).isFalse();
+    }
+
+    @Test
+    void detalleFuncionaAunqueElPublicadorNoEsteRegistrado() {
+        when(ofertas.findById(1L)).thenReturn(Optional.of(ofertaDeEmp(LocalDateTime.now().plusDays(1))));
+        when(usuarios.findByCorreo("emp@upb.edu.co")).thenReturn(Optional.empty());
+
+        OfertaDetalleDTO detalle = ofertaService.obtenerDetalle(1L, ana);
+
+        assertThat(detalle.publicadorNombre()).isEqualTo("emp@upb.edu.co");
+        assertThat(detalle.publicadorCarrera()).isNull();
+    }
+
+    @Test
+    void detalleDeOfertaInexistenteResponde404() {
+        when(ofertas.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> ofertaService.obtenerDetalle(1L, ana))
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }
