@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UsuarioRepository extends JpaRepository<UsuarioEntity, UUID> {
+    Optional<UsuarioEntity> findByCorreo(String correo);
     Optional<UsuarioEntity> findByMicrosoftOid(String microsoftOid);
     boolean existsByMicrosoftOidOrCorreo(String microsoftOid, String correo);
 }

@@ -1,15 +1,8 @@
 package co.edu.upb.upbconecta.controller;
 
-import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
-import co.edu.upb.upbconecta.dto.OfertaDTO;
-import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
-import co.edu.upb.upbconecta.exception.NoAutenticadoException;
-import co.edu.upb.upbconecta.repository.UsuarioRepository;
-import co.edu.upb.upbconecta.service.OfertaService;
-import co.edu.upb.upbconecta.service.SesionService;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -17,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,14 +18,27 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.UUID;
+import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
+import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
+import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
+import co.edu.upb.upbconecta.dto.PostulanteDTO;
+import co.edu.upb.upbconecta.exception.NoAutenticadoException;
+import co.edu.upb.upbconecta.repository.UsuarioRepository;
+import co.edu.upb.upbconecta.service.OfertaService;
+import co.edu.upb.upbconecta.service.PostulacionService;
+import co.edu.upb.upbconecta.service.SesionService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 /**
  * Endpoints de ofertas de trabajo.
  * - POST /api/v1/ofertas        : publica un trabajo (UPBCONECT-39); 409 si es un envio duplicado (UPBCONECT-40).
  * - GET  /api/v1/ofertas        : lista trabajos activos para el Dashboard (UPBCONECT-37). Exige sesion.
  * - GET  /api/v1/ofertas/mias   : publicaciones del usuario de la sesion (UPBCONECT-40).
+ * - GET  /api/v1/ofertas/{id}   : detalle de una oferta (UPBCONECT-41).
+ * - POST /api/v1/ofertas/{id}/postulaciones : postula al estudiante de la sesion (UPBCONECT-41).
  *
  * Soporta tanto autenticacion JWT institucional (SSO Microsoft en produccion) como la sesion demo heredada.
  */
@@ -41,11 +48,14 @@ import java.util.UUID;
 public class OfertaController {
 
     private final OfertaService ofertaService;
+    private final PostulacionService postulacionService;
     private final UsuarioRepository usuarioRepository;
 
     public OfertaController(OfertaService ofertaService,
+                            PostulacionService postulacionService,
                             @Autowired(required = false) UsuarioRepository usuarioRepository) {
         this.ofertaService = ofertaService;
+        this.postulacionService = postulacionService;
         this.usuarioRepository = usuarioRepository;
     }
 
@@ -68,6 +78,17 @@ public class OfertaController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size) {
         return ofertaService.listarActivas(page, size);
+    }
+
+    @GetMapping("/{id}")
+    public OfertaDetalleDTO obtenerDetalle(@PathVariable Long id, Authentication auth) {
+        return ofertaService.obtenerDetalle(id, extraerUsuario(auth));
+    }
+
+    @PostMapping("/{id}/postulaciones")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PostulanteDTO postular(@PathVariable Long id, Authentication auth) {
+        return postulacionService.postular(id, extraerUsuario(auth));
     }
 
     @GetMapping("/mias")

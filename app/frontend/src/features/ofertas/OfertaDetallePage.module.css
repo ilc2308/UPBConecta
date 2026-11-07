@@ -1,0 +1,73 @@
+.estado {
+  color: var(--color-texto-suave);
+  text-align: center;
+}
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.cabecera h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.urgente {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-fucsia);
+  background: var(--color-fucsia-claro);
+}
+
+.aviso {
+  margin-bottom: 16px;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.seccion {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  margin: 0;
+}
+
+.datos dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-texto-suave);
+}
+
+.datos dd {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ancho {
+  flex-basis: 100%;
+}
+
+.accion {
+  align-self: flex-start;
+  text-align: center;
+  text-decoration: none;
+}

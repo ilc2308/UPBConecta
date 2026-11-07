@@ -3,10 +3,16 @@ package co.edu.upb.upbconecta.controller;
 import co.edu.upb.upbconecta.config.CorsConfig;
 import co.edu.upb.upbconecta.config.SecurityConfig;
 import co.edu.upb.upbconecta.domain.EstadoOferta;
+import co.edu.upb.upbconecta.domain.EstadoPostulacion;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
 import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
+import co.edu.upb.upbconecta.dto.PostulanteDTO;
+import co.edu.upb.upbconecta.exception.AccesoDenegadoException;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
+import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
 import co.edu.upb.upbconecta.service.OfertaService;
+import co.edu.upb.upbconecta.service.PostulacionService;
 import co.edu.upb.upbconecta.service.SesionService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -75,6 +81,9 @@ class OfertaControllerWebTest {
     @MockitoBean
     OfertaService ofertaService;
 
+    @MockitoBean
+    PostulacionService postulacionService;
+
     private final SesionService.Usuario usuario = new SesionService.Usuario("demo@upb.edu.co", "Usuario Demo");
 
     private Cookie sesion() {
@@ -82,7 +91,6 @@ class OfertaControllerWebTest {
     }
 
     // --- UPBCONECT-39 / 40 ---
-
 
     @Test
     void publicaConJwtInstitucionalYResponde201() throws Exception {
@@ -224,5 +232,74 @@ class OfertaControllerWebTest {
                         .param("size", "5")
                         .cookie(sesion()))
                .andExpect(status().isOk());
+    }
+
+    // --- UPBCONECT-41 ---
+
+    private final PostulanteDTO postulante = new PostulanteDTO(10L, "Ana", "ana@upb.edu.co", "Sistemas",
+            EstadoPostulacion.PENDIENTE, LocalDateTime.of(2026, 1, 1, 8, 0));
+
+    @Test
+    void detalleConSesionResponde200ConDatosDelEmpleador() throws Exception {
+        when(ofertaService.obtenerDetalle(eq(1L), any())).thenReturn(new OfertaDetalleDTO(1L, "Titulo", "Actividad",
+                "Condiciones", 1000, LocalDateTime.of(2099, 1, 1, 8, 0), false, "Bloque 7", EstadoOferta.ABIERTA, true,
+                LocalDateTime.of(2026, 1, 1, 8, 0), "Empleador", "emp@upb.edu.co", "Derecho", true));
+
+        mockMvc.perform(get("/api/v1/ofertas/1").cookie(sesion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.publicadorNombre").value("Empleador"))
+                .andExpect(jsonPath("$.publicadorCarrera").value("Derecho"))
+                .andExpect(jsonPath("$.yaPostulado").value(true));
+    }
+
+    @Test
+    void detalleSinSesionResponde401() throws Exception {
+        mockMvc.perform(get("/api/v1/ofertas/1")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void detalleDeOfertaInexistenteResponde404() throws Exception {
+        when(ofertaService.obtenerDetalle(eq(99L), any())).thenThrow(new ResourceNotFoundException("No existe"));
+
+        mockMvc.perform(get("/api/v1/ofertas/99").cookie(sesion())).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void detalleConIdNoNumericoResponde400() throws Exception {
+        mockMvc.perform(get("/api/v1/ofertas/abc").cookie(sesion())).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void postularResponde201() throws Exception {
+        when(postulacionService.postular(eq(1L), any())).thenReturn(postulante);
+
+        mockMvc.perform(post("/api/v1/ofertas/1/postulaciones").cookie(sesion()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+    }
+
+    @Test
+    void postularSinSesionResponde401() throws Exception {
+        mockMvc.perform(post("/api/v1/ofertas/1/postulaciones")).andExpect(status().isUnauthorized());
+        verify(postulacionService, never()).postular(any(), any());
+    }
+
+    @Test
+    void postularDuplicadoResponde409ConMensaje() throws Exception {
+        when(postulacionService.postular(eq(1L), any()))
+                .thenThrow(new ConflictoNegocioException("Ya te postulaste a esta oferta"));
+
+        mockMvc.perform(post("/api/v1/ofertas/1/postulaciones").cookie(sesion()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Ya te postulaste a esta oferta"));
+    }
+
+    @Test
+    void postularSinRolEstudianteResponde403() throws Exception {
+        when(postulacionService.postular(eq(1L), any()))
+                .thenThrow(new AccesoDenegadoException("Solo los estudiantes pueden postularse"));
+
+        mockMvc.perform(post("/api/v1/ofertas/1/postulaciones").cookie(sesion()))
+                .andExpect(status().isForbidden());
     }
 }
