@@ -52,6 +52,14 @@ public class Postulacion {
         this.estado = EstadoPostulacion.PENDIENTE;
     }
 
+    public void seleccionar() {
+        this.estado = EstadoPostulacion.SELECCIONADA;
+    }
+
+    public void rechazar() {
+        this.estado = EstadoPostulacion.RECHAZADA;
+    }
+
     public Long getId() { return id; }
     public Oferta getOferta() { return oferta; }
     public UsuarioEntity getEstudiante() { return estudiante; }

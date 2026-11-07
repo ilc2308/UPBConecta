@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,9 +32,12 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
      */
     Page<Oferta> findByEstadoAndFechaLimiteAfter(EstadoOferta estado, LocalDateTime ahora, Pageable pageable);
 
-    /** Oferta con su fila bloqueada hasta el fin de la transaccion. (UPBCONECT-41) */
+    /** Oferta con su fila bloqueada hasta el fin de la transaccion. (UPBCONECT-41 y 43) */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from Oferta o where o.id = :id")
     Optional<Oferta> findConBloqueoById(@Param("id") Long id);
 
+    /** Trabajos asignados a un estudiante, el mas proximo a vencer primero. (UPBCONECT-43) */
+    List<Oferta> findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaLimiteAsc(
+            String correo, Collection<EstadoOferta> estados);
 }

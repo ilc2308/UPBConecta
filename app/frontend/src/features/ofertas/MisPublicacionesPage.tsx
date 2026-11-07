@@ -13,7 +13,6 @@ import styles from './MisPublicacionesPage.module.css'
 /**
  * "Mis publicaciones" (Your Posts): ofertas del usuario de la sesion (UPBCONECT-40).
  * Al llegar desde "Publicar trabajo" muestra "¡Publicado!" y resalta la oferta nueva.
- * TODO(UPBCONECT-42): numero de postulados y boton "Ver postulados" en cada publicacion.
  * TODO(UPBCONECT-37): mostrar dentro del layout con menu lateral cuando exista.
  */
 export function MisPublicacionesPage() {
@@ -89,6 +88,7 @@ export function MisPublicacionesPage() {
                   <div><dt>Ubicación</dt><dd>{o.ubicacion}</dd></div>
                 </dl>
                 <p className={styles.publicada}>Publicada el {formatearFecha(o.fechaPublicacion)}</p>
+                <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
               </li>
             ))}
           </ul>

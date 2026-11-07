@@ -58,6 +58,12 @@ export const ofertasApi = {
   crear: async (oferta: OfertaNueva) => (await api.post<Oferta>('/ofertas', oferta)).data,
   /** Publicaciones del usuario de la sesion, la mas reciente primero (UPBCONECT-40). */
   mias: async () => (await api.get<Oferta[]>('/ofertas/mias')).data,
+  /** Trabajos asignados al usuario de la sesion (UPBCONECT-43). */
+  asignadas: async () => (await api.get<Oferta[]>('/ofertas/asignadas')).data,
   detalle: async (id: string) => (await api.get<OfertaDetalle>(`/ofertas/${id}`)).data,
   postular: async (id: string) => (await api.post<Postulante>(`/ofertas/${id}/postulaciones`)).data,
+  postulantes: async (id: string) => (await api.get<Postulante[]>(`/ofertas/${id}/postulaciones`)).data,
+  /** Asigna la oferta a un postulante y devuelve la lista actualizada (UPBCONECT-43). */
+  seleccionar: async (id: string, postulacionId: number) =>
+    (await api.patch<Postulante[]>(`/ofertas/${id}/postulaciones/${postulacionId}/seleccionar`)).data,
 }

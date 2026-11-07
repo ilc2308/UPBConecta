@@ -24,7 +24,7 @@ import co.edu.upb.upbconecta.repository.OfertaRepository;
 import co.edu.upb.upbconecta.repository.PostulacionRepository;
 import co.edu.upb.upbconecta.repository.UsuarioRepository;
 
-/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37 y 41). */
+/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37, 41 y 43). */
 @Service
 public class OfertaService {
 
@@ -92,6 +92,15 @@ public class OfertaService {
         return ofertas
                 .findByEstadoAndFechaLimiteAfter(EstadoOferta.ABIERTA, LocalDateTime.now(), pageable)
                 .map(OfertaResumenDTO::desde);
+    }
+
+    /** Trabajos asignados al usuario de la sesion que aun no terminan ("Tareas pendientes"). (UPBCONECT-43) */
+    @Transactional(readOnly = true)
+    public List<OfertaDTO> tareasPendientes(SesionService.Usuario usuario) {
+        return ofertas.findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaLimiteAsc(
+                        usuario.correo(), List.of(EstadoOferta.ASIGNADA, EstadoOferta.EN_PROCESO)).stream()
+                .map(OfertaDTO::desde)
+                .toList();
     }
 
     /** Detalle de una oferta para el usuario de la sesion; 404 si no existe. (UPBCONECT-41) */

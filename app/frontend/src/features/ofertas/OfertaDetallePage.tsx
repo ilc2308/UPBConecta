@@ -154,6 +154,11 @@ export function OfertaDetallePage() {
               {enviando ? 'Enviando...' : 'Aplicar'}
             </button>
           )}
+          {propia && (
+            <Link to={`/ofertas/${oferta.id}/postulados`} className={`boton ${comun.botonFucsia} ${styles.accion}`}>
+              Ver postulados
+            </Link>
+          )}
         </div>
       </main>
     </>
