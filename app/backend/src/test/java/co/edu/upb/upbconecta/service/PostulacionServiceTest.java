@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,7 +32,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Reglas de postulacion (UPBCONECT-41), sin base de datos. */
+/** Reglas de postulacion (UPBCONECT-41) y seleccion (UPBCONECT-43), sin base de datos. */
 @ExtendWith(MockitoExtension.class)
 class PostulacionServiceTest {
 
@@ -43,6 +44,7 @@ class PostulacionServiceTest {
     private final SesionService.Usuario sesionEstudiante = new SesionService.Usuario("ana@upb.edu.co", "Ana");
     private final SesionService.Usuario sesionDueno = new SesionService.Usuario("emp@upb.edu.co", "Emp");
     private final UsuarioEntity ana = usuario("ana@upb.edu.co", RolUsuario.ESTUDIANTE);
+    private final UsuarioEntity luis = usuario("luis@upb.edu.co", RolUsuario.ESTUDIANTE);
 
     private static UsuarioEntity usuario(String correo, RolUsuario rol) {
         UsuarioEntity u = new UsuarioEntity("oid-" + correo, correo, correo, rol, "Sistemas");
@@ -57,6 +59,12 @@ class PostulacionServiceTest {
 
     private Oferta abierta() {
         return oferta(LocalDateTime.now().plusDays(1));
+    }
+
+    private Postulacion postulacion(long id, Oferta oferta, UsuarioEntity estudiante) {
+        Postulacion p = new Postulacion(oferta, estudiante, LocalDateTime.now());
+        ReflectionTestUtils.setField(p, "id", id);
+        return p;
     }
 
     private void conOferta(Oferta oferta) {
@@ -148,5 +156,65 @@ class PostulacionServiceTest {
                 .isInstanceOf(ConflictoNegocioException.class)
                 .hasMessageContaining("Ya te postulaste");
         verify(postulaciones, never()).save(any());
+    }
+
+    // --- UPBCONECT-43 ---
+
+    @Test
+    void seleccionarAsignaLaOfertaYRechazaALosDemas() {
+        Oferta oferta = abierta();
+        conOferta(oferta);
+        when(postulaciones.findByOfertaIdOrderByFechaPostulacionAsc(1L))
+                .thenReturn(List.of(postulacion(10L, oferta, ana), postulacion(11L, oferta, luis)));
+
+        List<PostulanteDTO> resultado = servicio.seleccionar(1L, 11L, sesionDueno);
+
+        assertThat(resultado).extracting(PostulanteDTO::estado)
+                .containsExactly(EstadoPostulacion.RECHAZADA, EstadoPostulacion.SELECCIONADA);
+        assertThat(oferta.getEstado()).isEqualTo(EstadoOferta.ASIGNADA);
+        assertThat(oferta.getEstudianteAsignado()).isSameAs(luis);
+        assertThat(oferta.getFechaAsignacion()).isNotNull();
+    }
+
+    @Test
+    void noSePuedeSeleccionarUnSegundoPostulante() {
+        Oferta asignada = abierta();
+        asignada.asignar(ana, LocalDateTime.now());
+        conOferta(asignada);
+
+        assertThatThrownBy(() -> servicio.seleccionar(1L, 11L, sesionDueno))
+                .isInstanceOf(ConflictoNegocioException.class);
+        assertThat(asignada.getEstudianteAsignado()).isSameAs(ana);
+    }
+
+    @Test
+    void soloElDuenoPuedeSeleccionar() {
+        Oferta oferta = abierta();
+        conOferta(oferta);
+
+        assertThatThrownBy(() -> servicio.seleccionar(1L, 10L, sesionEstudiante))
+                .isInstanceOf(AccesoDenegadoException.class);
+        assertThat(oferta.getEstado()).isEqualTo(EstadoOferta.ABIERTA);
+    }
+
+    @Test
+    void postulacionDeOtraOfertaResponde404YNoCambiaNada() {
+        Oferta oferta = abierta();
+        conOferta(oferta);
+        Postulacion existente = postulacion(10L, oferta, ana);
+        when(postulaciones.findByOfertaIdOrderByFechaPostulacionAsc(1L)).thenReturn(List.of(existente));
+
+        assertThatThrownBy(() -> servicio.seleccionar(1L, 99L, sesionDueno))
+                .isInstanceOf(ResourceNotFoundException.class);
+        assertThat(existente.getEstado()).isEqualTo(EstadoPostulacion.PENDIENTE);
+        assertThat(oferta.getEstado()).isEqualTo(EstadoOferta.ABIERTA);
+    }
+
+    @Test
+    void soloElDuenoPuedeVerLosPostulantes() {
+        when(ofertas.findById(1L)).thenReturn(Optional.of(abierta()));
+
+        assertThatThrownBy(() -> servicio.listar(1L, sesionEstudiante))
+                .isInstanceOf(AccesoDenegadoException.class);
     }
 }

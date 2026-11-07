@@ -1,13 +1,17 @@
 package co.edu.upb.upbconecta.domain;
 
+import co.edu.upb.upbconecta.model.UsuarioEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
@@ -58,6 +62,14 @@ public class Oferta {
     @Column(name = "publicador_correo", nullable = false, length = 150)
     private String publicadorCorreo;
 
+    /** Estudiante elegido entre los postulantes; null hasta que se asigna (UPBCONECT-43). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "estudiante_asignado_id")
+    private UsuarioEntity estudianteAsignado;
+
+    @Column(name = "fecha_asignacion")
+    private LocalDateTime fechaAsignacion;
+
     /** Requerido por JPA. */
     protected Oferta() {
     }
@@ -77,6 +89,12 @@ public class Oferta {
         this.estado = EstadoOferta.ABIERTA;
     }
 
+    public void asignar(UsuarioEntity estudiante, LocalDateTime fecha) {
+        this.estudianteAsignado = estudiante;
+        this.fechaAsignacion = fecha;
+        this.estado = EstadoOferta.ASIGNADA;
+    }
+
     public Long getId() { return id; }
     public String getTitulo() { return titulo; }
     public String getActividad() { return actividad; }
@@ -88,4 +106,6 @@ public class Oferta {
     public EstadoOferta getEstado() { return estado; }
     public LocalDateTime getFechaPublicacion() { return fechaPublicacion; }
     public String getPublicadorCorreo() { return publicadorCorreo; }
+    public UsuarioEntity getEstudianteAsignado() { return estudianteAsignado; }
+    public LocalDateTime getFechaAsignacion() { return fechaAsignacion; }
 }

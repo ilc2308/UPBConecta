@@ -38,6 +38,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -91,6 +92,7 @@ class OfertaControllerWebTest {
     }
 
     // --- UPBCONECT-39 / 40 ---
+
 
     @Test
     void publicaConJwtInstitucionalYResponde201() throws Exception {
@@ -301,5 +303,42 @@ class OfertaControllerWebTest {
 
         mockMvc.perform(post("/api/v1/ofertas/1/postulaciones").cookie(sesion()))
                 .andExpect(status().isForbidden());
+    }
+
+    // --- UPBCONECT-43 ---
+
+    @Test
+    void seleccionarResponde200ConLaListaActualizada() throws Exception {
+        when(postulacionService.seleccionar(eq(1L), eq(10L), any())).thenReturn(List.of(new PostulanteDTO(
+                10L, "Ana", "ana@upb.edu.co", "Sistemas", EstadoPostulacion.SELECCIONADA,
+                LocalDateTime.of(2026, 1, 1, 8, 0))));
+
+        mockMvc.perform(patch("/api/v1/ofertas/1/postulaciones/10/seleccionar").cookie(sesion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].estado").value("SELECCIONADA"));
+    }
+
+    @Test
+    void seleccionarSegundoPostulanteResponde409() throws Exception {
+        when(postulacionService.seleccionar(eq(1L), eq(11L), any()))
+                .thenThrow(new ConflictoNegocioException("Esta oferta ya no admite seleccionar postulantes"));
+
+        mockMvc.perform(patch("/api/v1/ofertas/1/postulaciones/11/seleccionar").cookie(sesion()))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void seleccionarSinSesionResponde401() throws Exception {
+        mockMvc.perform(patch("/api/v1/ofertas/1/postulaciones/10/seleccionar"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void tareasPendientesResponde200() throws Exception {
+        when(ofertaService.tareasPendientes(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/ofertas/asignadas").cookie(sesion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 }
