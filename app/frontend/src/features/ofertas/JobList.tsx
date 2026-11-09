@@ -87,7 +87,6 @@ export function JobList() {
 
             <div className={styles.pie}>
               <span className={styles.valor}>{formatearPesos(oferta.valorOfrecido)}</span>
-              {/* TODO(UPBCONECT-41): enlazar al detalle de la oferta cuando exista */}
               <a
                 href={`/ofertas/${oferta.id}`}
                 className={styles.masInfo}

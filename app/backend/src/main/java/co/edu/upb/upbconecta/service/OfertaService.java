@@ -1,23 +1,30 @@
 package co.edu.upb.upbconecta.service;
 
-import co.edu.upb.upbconecta.domain.EstadoOferta;
-import co.edu.upb.upbconecta.domain.Oferta;
-import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
-import co.edu.upb.upbconecta.dto.OfertaDTO;
-import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
-import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
-import co.edu.upb.upbconecta.repository.OfertaRepository;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.List;
+import co.edu.upb.upbconecta.domain.EstadoOferta;
+import co.edu.upb.upbconecta.domain.Oferta;
+import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
+import co.edu.upb.upbconecta.dto.OfertaDTO;
+import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
+import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
+import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
+import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
+import co.edu.upb.upbconecta.model.UsuarioEntity;
+import co.edu.upb.upbconecta.repository.OfertaRepository;
+import co.edu.upb.upbconecta.repository.PostulacionRepository;
+import co.edu.upb.upbconecta.repository.UsuarioRepository;
 
-/** Reglas de negocio de las ofertas (UPBCONECT-39, UPBCONECT-40 y UPBCONECT-37). */
+/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37 y 41). */
 @Service
 public class OfertaService {
 
@@ -25,9 +32,14 @@ public class OfertaService {
     static final Duration VENTANA_DUPLICADO = Duration.ofMinutes(1);
 
     private final OfertaRepository ofertas;
+    private final UsuarioRepository usuarios;
+    private final PostulacionRepository postulaciones;
 
-    public OfertaService(OfertaRepository ofertas) {
+    public OfertaService(OfertaRepository ofertas, UsuarioRepository usuarios,
+                         PostulacionRepository postulaciones) {
         this.ofertas = ofertas;
+        this.usuarios = usuarios;
+        this.postulaciones = postulaciones;
     }
 
     /**
@@ -80,5 +92,30 @@ public class OfertaService {
         return ofertas
                 .findByEstadoAndFechaLimiteAfter(EstadoOferta.ABIERTA, LocalDateTime.now(), pageable)
                 .map(OfertaResumenDTO::desde);
+    }
+
+    /** Detalle de una oferta para el usuario de la sesion; 404 si no existe. (UPBCONECT-41) */
+    @Transactional(readOnly = true)
+    public OfertaDetalleDTO obtenerDetalle(Long id, SesionService.Usuario usuario) {
+        Oferta oferta = ofertas.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Oferta no encontrada con ID: " + id));
+        Optional<UsuarioEntity> publicador = usuarios.findByCorreo(oferta.getPublicadorCorreo());
+
+        return new OfertaDetalleDTO(
+                oferta.getId(),
+                oferta.getTitulo(),
+                oferta.getActividad(),
+                oferta.getCondiciones(),
+                oferta.getValorOfrecido(),
+                oferta.getFechaLimite(),
+                oferta.isUrgente(),
+                oferta.getUbicacion(),
+                oferta.getEstado(),
+                oferta.getEstado() == EstadoOferta.ABIERTA && oferta.getFechaLimite().isAfter(LocalDateTime.now()),
+                oferta.getFechaPublicacion(),
+                publicador.map(UsuarioEntity::getNombre).orElse(oferta.getPublicadorCorreo()),
+                oferta.getPublicadorCorreo(),
+                publicador.map(UsuarioEntity::getCarrera).orElse(null),
+                postulaciones.existsByOfertaIdAndEstudianteCorreo(id, usuario.correo()));
     }
 }
