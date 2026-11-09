@@ -16,10 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * Postulaciones a ofertas (UPBCONECT-41).
- * Postular bloquea la fila de la oferta para que no se cruce con un cambio de su estado.
+ * Postulaciones a ofertas (UPBCONECT-41) y seleccion del postulante (UPBCONECT-43).
+ * Postular y seleccionar bloquean la fila de la oferta para que no puedan cruzarse:
+ * nadie se postula a una oferta que se esta asignando ni se eligen dos postulantes a la vez.
  */
 @Service
 public class PostulacionService {
@@ -56,6 +58,41 @@ public class PostulacionService {
         return PostulanteDTO.desde(postulaciones.save(new Postulacion(oferta, estudiante, ahora)));
     }
 
+    /** Postulantes de una oferta, visibles solo para quien la publico. */
+    @Transactional(readOnly = true)
+    public List<PostulanteDTO> listar(Long ofertaId, SesionService.Usuario sesion) {
+        Oferta oferta = ofertas.findById(ofertaId).orElseThrow(() -> ofertaNoEncontrada(ofertaId));
+        exigirDueno(oferta, sesion);
+        return postulaciones.findByOfertaIdOrderByFechaPostulacionAsc(ofertaId).stream()
+                .map(PostulanteDTO::desde)
+                .toList();
+    }
+
+    /**
+     * Asigna la oferta a un postulante: su postulacion pasa a SELECCIONADA, las demas a RECHAZADA
+     * y la oferta a ASIGNADA. Devuelve la lista de postulantes actualizada.
+     */
+    @Transactional
+    public List<PostulanteDTO> seleccionar(Long ofertaId, Long postulacionId, SesionService.Usuario sesion) {
+        Oferta oferta = ofertaBloqueada(ofertaId);
+        exigirDueno(oferta, sesion);
+        if (oferta.getEstado() != EstadoOferta.ABIERTA) {
+            throw new ConflictoNegocioException("Esta oferta ya no admite seleccionar postulantes");
+        }
+
+        List<Postulacion> todas = postulaciones.findByOfertaIdOrderByFechaPostulacionAsc(ofertaId);
+        Postulacion elegida = todas.stream()
+                .filter(p -> p.getId().equals(postulacionId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Postulacion no encontrada con ID: " + postulacionId));
+
+        todas.forEach(Postulacion::rechazar);
+        elegida.seleccionar();
+        oferta.asignar(elegida.getEstudiante(), LocalDateTime.now());
+        return todas.stream().map(PostulanteDTO::desde).toList();
+    }
+
     private Oferta ofertaBloqueada(Long ofertaId) {
         return ofertas.findConBloqueoById(ofertaId).orElseThrow(() -> ofertaNoEncontrada(ofertaId));
     }
@@ -68,4 +105,9 @@ public class PostulacionService {
         return oferta.getPublicadorCorreo().equalsIgnoreCase(sesion.correo());
     }
 
+    private static void exigirDueno(Oferta oferta, SesionService.Usuario sesion) {
+        if (!esDueno(oferta, sesion)) {
+            throw new AccesoDenegadoException("Solo quien publicó la oferta puede gestionar sus postulantes");
+        }
+    }
 }

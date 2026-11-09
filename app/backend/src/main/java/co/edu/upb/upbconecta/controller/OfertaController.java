@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -37,8 +38,11 @@ import jakarta.validation.constraints.Min;
  * - POST /api/v1/ofertas        : publica un trabajo (UPBCONECT-39); 409 si es un envio duplicado (UPBCONECT-40).
  * - GET  /api/v1/ofertas        : lista trabajos activos para el Dashboard (UPBCONECT-37). Exige sesion.
  * - GET  /api/v1/ofertas/mias   : publicaciones del usuario de la sesion (UPBCONECT-40).
+ * - GET  /api/v1/ofertas/asignadas : trabajos asignados al usuario de la sesion (UPBCONECT-43).
  * - GET  /api/v1/ofertas/{id}   : detalle de una oferta (UPBCONECT-41).
  * - POST /api/v1/ofertas/{id}/postulaciones : postula al estudiante de la sesion (UPBCONECT-41).
+ * - GET  /api/v1/ofertas/{id}/postulaciones : postulantes de la oferta, solo para quien la publico.
+ * - PATCH /api/v1/ofertas/{id}/postulaciones/{postulacionId}/seleccionar : asigna la oferta (UPBCONECT-43).
  *
  * Soporta tanto autenticacion JWT institucional (SSO Microsoft en produccion) como la sesion demo heredada.
  */
@@ -89,6 +93,22 @@ public class OfertaController {
     @ResponseStatus(HttpStatus.CREATED)
     public PostulanteDTO postular(@PathVariable Long id, Authentication auth) {
         return postulacionService.postular(id, extraerUsuario(auth));
+    }
+
+    @GetMapping("/{id}/postulaciones")
+    public List<PostulanteDTO> postulantes(@PathVariable Long id, Authentication auth) {
+        return postulacionService.listar(id, extraerUsuario(auth));
+    }
+
+    @PatchMapping("/{id}/postulaciones/{postulacionId}/seleccionar")
+    public List<PostulanteDTO> seleccionar(@PathVariable Long id, @PathVariable Long postulacionId,
+                                           Authentication auth) {
+        return postulacionService.seleccionar(id, postulacionId, extraerUsuario(auth));
+    }
+
+    @GetMapping("/asignadas")
+    public List<OfertaDTO> asignadas(Authentication auth) {
+        return ofertaService.tareasPendientes(extraerUsuario(auth));
     }
 
     @GetMapping("/mias")

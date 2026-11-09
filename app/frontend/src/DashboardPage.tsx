@@ -35,10 +35,9 @@ export function DashboardPage() {
               </Link>
             </li>
             <li>
-              {/* TODO(UPBCONECT-41/42): tareas pendientes */}
-              <span className={`${styles.enlace} ${styles.enlaceDeshabilitado}`}>
+              <Link to="/tareas-pendientes" className={styles.enlace}>
                 ⏳ Tareas pendientes
-              </span>
+              </Link>
             </li>
             <li>
               {/* TODO(UPBCONECT-43): chats */}
