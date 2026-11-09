@@ -13,10 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.domain.Oferta;
+import co.edu.upb.upbconecta.dto.ActualizarEstadoOfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
 import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
+import co.edu.upb.upbconecta.exception.AccesoDenegadoException;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
 import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
 import co.edu.upb.upbconecta.model.UsuarioEntity;
@@ -24,7 +26,7 @@ import co.edu.upb.upbconecta.repository.OfertaRepository;
 import co.edu.upb.upbconecta.repository.PostulacionRepository;
 import co.edu.upb.upbconecta.repository.UsuarioRepository;
 
-/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37, 41 y 43). */
+/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37, 41, 43 y 44). */
 @Service
 public class OfertaService {
 
@@ -101,6 +103,47 @@ public class OfertaService {
                         usuario.correo(), List.of(EstadoOferta.ASIGNADA, EstadoOferta.EN_PROCESO)).stream()
                 .map(OfertaDTO::desde)
                 .toList();
+    }
+
+    /** Trabajos asignados y finalizados del estudiante de la sesion (UPBCONECT-44). */
+    @Transactional(readOnly = true)
+    public List<OfertaDTO> misTrabajosAsignados(SesionService.Usuario usuario) {
+        return ofertas.findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
+                        usuario.correo(), List.of(EstadoOferta.ASIGNADA, EstadoOferta.FINALIZADA)).stream()
+                .map(OfertaDTO::desde)
+                .toList();
+    }
+
+    /**
+     * Actualiza el estado de una oferta (UPBCONECT-44).
+     * Máquina de estados: ABIERTA -> ASIGNADA -> FINALIZADA.
+     * Solo el empleador que publicó la oferta puede cerrarla.
+     */
+    @Transactional
+    public OfertaDTO actualizarEstado(Long id, ActualizarEstadoOfertaDTO datos, SesionService.Usuario usuario) {
+        Oferta oferta = ofertas.findConBloqueoById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Oferta no encontrada con ID: " + id));
+
+        if (!oferta.getPublicadorCorreo().equalsIgnoreCase(usuario.correo())) {
+            throw new AccesoDenegadoException("Solo quien publicó la oferta puede actualizar su estado");
+        }
+
+        if (datos.estado() == EstadoOferta.FINALIZADA) {
+            if (oferta.getEstado() == EstadoOferta.FINALIZADA) {
+                throw new ConflictoNegocioException("La oferta ya se encuentra finalizada");
+            }
+            if (oferta.getEstado() != EstadoOferta.ASIGNADA) {
+                throw new ConflictoNegocioException("Solo se puede finalizar un trabajo en estado ASIGNADA");
+            }
+            if (oferta.getEstudianteAsignado() == null) {
+                throw new ConflictoNegocioException("No se puede finalizar un trabajo que no tenga un estudiante asignado");
+            }
+            oferta.finalizar(LocalDateTime.now());
+        } else {
+            throw new ConflictoNegocioException("Transición de estado no permitida");
+        }
+
+        return OfertaDTO.desde(oferta);
     }
 
     /** Detalle de una oferta para el usuario de la sesion; 404 si no existe. (UPBCONECT-41) */

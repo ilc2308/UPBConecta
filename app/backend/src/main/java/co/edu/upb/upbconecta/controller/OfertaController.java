@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import co.edu.upb.upbconecta.dto.ActualizarEstadoOfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
@@ -39,7 +40,9 @@ import jakarta.validation.constraints.Min;
  * - GET  /api/v1/ofertas        : lista trabajos activos para el Dashboard (UPBCONECT-37). Exige sesion.
  * - GET  /api/v1/ofertas/mias   : publicaciones del usuario de la sesion (UPBCONECT-40).
  * - GET  /api/v1/ofertas/asignadas : trabajos asignados al usuario de la sesion (UPBCONECT-43).
+ * - GET  /api/v1/ofertas/asignadas/mias : trabajos asignados y finalizados del estudiante (UPBCONECT-44).
  * - GET  /api/v1/ofertas/{id}   : detalle de una oferta (UPBCONECT-41).
+ * - PATCH /api/v1/ofertas/{id}/estado : actualiza el estado de la oferta (UPBCONECT-44).
  * - POST /api/v1/ofertas/{id}/postulaciones : postula al estudiante de la sesion (UPBCONECT-41).
  * - GET  /api/v1/ofertas/{id}/postulaciones : postulantes de la oferta, solo para quien la publico.
  * - PATCH /api/v1/ofertas/{id}/postulaciones/{postulacionId}/seleccionar : asigna la oferta (UPBCONECT-43).
@@ -89,6 +92,13 @@ public class OfertaController {
         return ofertaService.obtenerDetalle(id, extraerUsuario(auth));
     }
 
+    @PatchMapping("/{id}/estado")
+    public OfertaDTO actualizarEstado(@PathVariable Long id,
+                                      @Valid @RequestBody ActualizarEstadoOfertaDTO datos,
+                                      Authentication auth) {
+        return ofertaService.actualizarEstado(id, datos, extraerUsuario(auth));
+    }
+
     @PostMapping("/{id}/postulaciones")
     @ResponseStatus(HttpStatus.CREATED)
     public PostulanteDTO postular(@PathVariable Long id, Authentication auth) {
@@ -109,6 +119,11 @@ public class OfertaController {
     @GetMapping("/asignadas")
     public List<OfertaDTO> asignadas(Authentication auth) {
         return ofertaService.tareasPendientes(extraerUsuario(auth));
+    }
+
+    @GetMapping("/asignadas/mias")
+    public List<OfertaDTO> misAsignadas(Authentication auth) {
+        return ofertaService.misTrabajosAsignados(extraerUsuario(auth));
     }
 
     @GetMapping("/mias")
