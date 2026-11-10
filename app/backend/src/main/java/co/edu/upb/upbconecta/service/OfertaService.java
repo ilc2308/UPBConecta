@@ -93,6 +93,32 @@ public class OfertaService {
                 .findByEstadoAndFechaLimiteAfter(EstadoOferta.ABIERTA, LocalDateTime.now(), pageable)
                 .map(OfertaResumenDTO::desde);
     }
+    /**
+     * Busqueda de ofertas activas por palabra clave (UPBCONECT-38).
+     * Con menos de 2 caracteres (ya sin espacios) no busca y devuelve el listado normal.
+     * El texto se limita a 100 caracteres y se escapan los comodines de LIKE.
+     */
+    @Transactional(readOnly = true)
+    public Page<OfertaResumenDTO> buscarActivas(String q, int page, int size) {
+        String termino = (q == null) ? "" : q.trim();
+        if (termino.length() > 100) {
+            termino = termino.substring(0, 100).trim();
+        }
+        if (termino.length() < 2) {
+            return listarActivas(page, size);
+        }
+        String patron = "%" + escaparLike(termino) + "%";
+        int tamano = Math.min(size, 50);
+        PageRequest pageable = PageRequest.of(page, tamano, Sort.by(Sort.Direction.DESC, "fechaPublicacion"));
+        return ofertas
+                .buscarActivas(EstadoOferta.ABIERTA, LocalDateTime.now(), patron, pageable)
+                .map(OfertaResumenDTO::desde);
+    }
+
+    /** Escapa \, % y _ para que se busquen como texto normal dentro de un LIKE. */
+    private static String escaparLike(String texto) {
+        return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
 
     /** Trabajos asignados al usuario de la sesion que aun no terminan ("Tareas pendientes"). (UPBCONECT-43) */
     @Transactional(readOnly = true)
