@@ -109,7 +109,7 @@ public class OfertaService {
     @Transactional(readOnly = true)
     public List<OfertaDTO> misTrabajosAsignados(SesionService.Usuario usuario) {
         return ofertas.findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
-                        usuario.correo(), List.of(EstadoOferta.ASIGNADA, EstadoOferta.FINALIZADA)).stream()
+                        usuario.correo(), List.of(EstadoOferta.ASIGNADA, EstadoOferta.EN_PROCESO, EstadoOferta.FINALIZADA)).stream()
                 .map(OfertaDTO::desde)
                 .toList();
     }
@@ -132,13 +132,24 @@ public class OfertaService {
             if (oferta.getEstado() == EstadoOferta.FINALIZADA) {
                 throw new ConflictoNegocioException("La oferta ya se encuentra finalizada");
             }
-            if (oferta.getEstado() != EstadoOferta.ASIGNADA) {
-                throw new ConflictoNegocioException("Solo se puede finalizar un trabajo en estado ASIGNADA");
+            if (oferta.getEstado() != EstadoOferta.ASIGNADA && oferta.getEstado() != EstadoOferta.EN_PROCESO) {
+                throw new ConflictoNegocioException("Solo se puede finalizar un trabajo en estado ASIGNADA o EN_PROCESO");
             }
             if (oferta.getEstudianteAsignado() == null) {
                 throw new ConflictoNegocioException("No se puede finalizar un trabajo que no tenga un estudiante asignado");
             }
             oferta.finalizar(LocalDateTime.now());
+        } else if (datos.estado() == EstadoOferta.EN_PROCESO) {
+            if (oferta.getEstado() == EstadoOferta.FINALIZADA) {
+                throw new ConflictoNegocioException("No se puede pasar a en proceso un trabajo ya finalizado");
+            }
+            if (oferta.getEstado() == EstadoOferta.EN_PROCESO) {
+                throw new ConflictoNegocioException("La oferta ya se encuentra en proceso");
+            }
+            if (oferta.getEstado() != EstadoOferta.ASIGNADA) {
+                throw new ConflictoNegocioException("Solo se puede pasar a EN_PROCESO un trabajo en estado ASIGNADA");
+            }
+            oferta.ponerEnProceso();
         } else {
             throw new ConflictoNegocioException("Transición de estado no permitida");
         }

@@ -73,6 +73,6 @@ export const ofertasApi = {
   seleccionar: async (id: string, postulacionId: number) =>
     (await api.patch<Postulante[]>(`/ofertas/${id}/postulaciones/${postulacionId}/seleccionar`)).data,
   /** Actualiza el estado de la oferta (UPBCONECT-44). */
-  actualizarEstado: async (id: number | string, estado: 'FINALIZADA') =>
+  actualizarEstado: async (id: number | string, estado: 'FINALIZADA' | 'EN_PROCESO') =>
     (await api.patch<Oferta>(`/ofertas/${id}/estado`, { estado })).data,
 }

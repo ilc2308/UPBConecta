@@ -100,6 +100,10 @@ public class Oferta {
         this.estado = EstadoOferta.ASIGNADA;
     }
 
+    public void ponerEnProceso() {
+        this.estado = EstadoOferta.EN_PROCESO;
+    }
+
     public void finalizar(LocalDateTime fecha) {
         this.estado = EstadoOferta.FINALIZADA;
         this.fechaCierre = fecha;

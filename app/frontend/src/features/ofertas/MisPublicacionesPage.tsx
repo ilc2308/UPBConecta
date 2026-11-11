@@ -149,7 +149,7 @@ export function MisPublicacionesPage() {
                     {o.estado === 'ABIERTA' && (
                       <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
                     )}
-                    {o.estado === 'ASIGNADA' && (
+                    {(o.estado === 'ASIGNADA' || o.estado === 'EN_PROCESO') && (
                       <>
                         <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
                         <button

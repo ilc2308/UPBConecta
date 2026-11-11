@@ -206,6 +206,37 @@ class OfertaServiceTest {
     // --- UPBCONECT-44 ---
 
     @Test
+    void actualizarEstadoAFinalizadaDesdeEnProcesoConExito() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        oferta.ponerEnProceso();
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+        ActualizarEstadoOfertaDTO dto = new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA);
+
+        OfertaDTO resultado = ofertaService.actualizarEstado(1L, dto, emp);
+
+        assertThat(resultado.estado()).isEqualTo(EstadoOferta.FINALIZADA);
+        assertThat(resultado.fechaCierre()).isNotNull();
+    }
+
+    @Test
+    void actualizarEstadoAEnProcesoConExito() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+        ActualizarEstadoOfertaDTO dto = new ActualizarEstadoOfertaDTO(EstadoOferta.EN_PROCESO);
+
+        OfertaDTO resultado = ofertaService.actualizarEstado(1L, dto, emp);
+
+        assertThat(resultado.estado()).isEqualTo(EstadoOferta.EN_PROCESO);
+    }
+    @Test
     void actualizarEstadoAFinalizadaConExito() {
         Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
         UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
@@ -283,15 +314,15 @@ class OfertaServiceTest {
     }
 
     @Test
-    void misTrabajosAsignadosConsultaEstadosAsignadaYFinalizada() {
+    void misTrabajosAsignadosConsultaEstadosAsignadaEnProcesoYFinalizada() {
         when(ofertas.findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
-                eq("ana@upb.edu.co"), eq(List.of(EstadoOferta.ASIGNADA, EstadoOferta.FINALIZADA))))
+                eq("ana@upb.edu.co"), eq(List.of(EstadoOferta.ASIGNADA, EstadoOferta.EN_PROCESO, EstadoOferta.FINALIZADA))))
                 .thenReturn(List.of());
 
         List<OfertaDTO> resultado = ofertaService.misTrabajosAsignados(ana);
 
         assertThat(resultado).isEmpty();
         verify(ofertas).findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
-                eq("ana@upb.edu.co"), eq(List.of(EstadoOferta.ASIGNADA, EstadoOferta.FINALIZADA)));
+                eq("ana@upb.edu.co"), eq(List.of(EstadoOferta.ASIGNADA, EstadoOferta.EN_PROCESO, EstadoOferta.FINALIZADA)));
     }
 }
