@@ -28,7 +28,7 @@ import co.edu.upb.upbconecta.repository.OfertaRepository;
 import co.edu.upb.upbconecta.repository.PostulacionRepository;
 import co.edu.upb.upbconecta.repository.UsuarioRepository;
 
-/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37, 41, 43 y 44). */
+/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37, 38, 41, 43 y 44). */
 @Service
 public class OfertaService {
 
@@ -76,7 +76,7 @@ public class OfertaService {
     /** Publicaciones del usuario de la sesion, la mas reciente primero ("Mis publicaciones"). */
     @Transactional(readOnly = true)
     public List<OfertaDTO> misOfertas(SesionService.Usuario usuario) {
-                List<Oferta> mias = ofertas.findByPublicadorCorreoOrderByFechaPublicacionDesc(usuario.correo());
+        List<Oferta> mias = ofertas.findByPublicadorCorreoOrderByFechaPublicacionDesc(usuario.correo());
         if (mias.isEmpty()) {
             return List.of();
         }
@@ -106,6 +106,40 @@ public class OfertaService {
                 .map(OfertaResumenDTO::desde);
     }
 
+    /**
+     * Busqueda de ofertas activas por palabra clave (UPBCONECT-38).
+     * Con menos de 2 caracteres (ya sin espacios) no busca y devuelve el listado normal.
+     * El texto se limita a 100 caracteres y se escapan los comodines de LIKE.
+     */
+    @Transactional(readOnly = true)
+    public Page<OfertaResumenDTO> buscarActivas(String q, int page, int size) {
+        String termino = (q == null) ? "" : q.trim();
+        if (termino.length() > 100) {
+            termino = termino.substring(0, 100).trim();
+        }
+        if (termino.length() < 2) {
+            return listarActivas(page, size);
+        }
+        String patron = "%" + escaparLike(sinTildes(termino)) + "%";
+        int tamano = Math.min(size, 50);
+        PageRequest pageable = PageRequest.of(page, tamano, Sort.by(Sort.Direction.DESC, "fechaPublicacion"));
+        return ofertas
+                .buscarActivas(EstadoOferta.ABIERTA, LocalDateTime.now(), patron, pageable)
+                .map(OfertaResumenDTO::desde);
+    }
+
+    /** Quita tildes y pasa a minusculas, igual que hace la consulta con las columnas. */
+    private static String sinTildes(String texto) {
+        return java.text.Normalizer.normalize(texto, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Escapa \, % y _ para que se busquen como texto normal dentro de un LIKE. */
+    private static String escaparLike(String texto) {
+        return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
     /** Trabajos asignados al usuario de la sesion que aun no terminan ("Tareas pendientes"). (UPBCONECT-43) */
     @Transactional(readOnly = true)
     public List<OfertaDTO> tareasPendientes(SesionService.Usuario usuario) {
@@ -126,8 +160,8 @@ public class OfertaService {
 
     /**
      * Actualiza el estado de una oferta (UPBCONECT-44).
-     * Máquina de estados: ABIERTA -> ASIGNADA -> FINALIZADA.
-     * Solo el empleador que publicó la oferta puede cerrarla.
+     * Maquina de estados: ABIERTA -> ASIGNADA -> EN_PROCESO -> FINALIZADA.
+     * Solo el empleador que publico la oferta puede cerrarla.
      */
     @Transactional
     public OfertaDTO actualizarEstado(Long id, ActualizarEstadoOfertaDTO datos, SesionService.Usuario usuario) {

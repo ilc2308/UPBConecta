@@ -44,4 +44,24 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     /** Trabajos asignados y finalizados de un estudiante (UPBCONECT-44). */
     List<Oferta> findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
             String correo, Collection<EstadoOferta> estados);
+
+    /**
+     * Busqueda por palabra clave sobre titulo, actividad y condiciones, sin distinguir
+     * mayusculas ni tildes. Mantiene la regla de ofertas ABIERTAS y vigentes. (UPBCONECT-38)
+     * El patron ya llega con los comodines % y con los caracteres especiales escapados con '\'.
+     */
+    @Query("""
+            select o from Oferta o
+            where o.estado = :estado
+              and o.fechaLimite > :ahora
+              and (
+                   function('translate', lower(o.titulo), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
+                or function('translate', lower(o.actividad), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
+                or function('translate', lower(o.condiciones), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
+              )
+            """)
+    Page<Oferta> buscarActivas(@Param("estado") EstadoOferta estado,
+                               @Param("ahora") LocalDateTime ahora,
+                               @Param("patron") String patron,
+                               Pageable pageable);
 }
