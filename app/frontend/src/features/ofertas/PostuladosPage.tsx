@@ -90,37 +90,53 @@ export function PostuladosPage() {
 
         {!errorCarga && postulantes === null && <p className={lista.vacio}>Cargando postulados...</p>}
 
-        {postulantes?.length === 0 && (
+               {postulantes?.length === 0 && (
           <div className={`tarjeta ${lista.vacio}`}>
-            <p>Aún no hay postulados para este trabajo.</p>
+            <p>Todavía nadie se ha postulado</p>
           </div>
         )}
 
         {postulantes && postulantes.length > 0 && (
-          <ul className={lista.lista}>
-            {postulantes.map((p) => (
-              <li key={p.postulacionId} className={`tarjeta ${styles.fila}`}>
-                <div>
-                  <h2 className={lista.nombre}>{p.nombre}</h2>
-                  <p className={styles.dato}>{p.correo} · {p.carrera}</p>
-                  <p className={styles.dato}>Se postuló el {formatearFecha(p.fechaPostulacion)}</p>
-                </div>
-                {p.estado === 'SELECCIONADA' ? (
-                  <span className={lista.etiqueta}>Seleccionado</span>
-                ) : (
-                  <button
-                    type="button"
-                    className={`boton ${comun.botonFucsia}`}
-                    disabled={bloqueada}
-                    onClick={() => setAConfirmar(p)}
-                  >
-                    Seleccionar
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+          <div className={styles.tablaContenedor}>
+            <table className={styles.tabla}>
+              <caption className={styles.soloLectores}>Estudiantes postulados a esta oferta</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Carrera</th>
+                  <th scope="col">Correo institucional</th>
+                  <th scope="col">Fecha de postulación</th>
+                  <th scope="col">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {postulantes.map((p) => (
+                  <tr key={p.postulacionId}>
+                    <td>{p.nombre}</td>
+                    <td>{p.carrera}</td>
+                    <td>{p.correo}</td>
+                    <td>{formatearFecha(p.fechaPostulacion)}</td>
+                    <td>
+                      {p.estado === 'SELECCIONADA' ? (
+                        <span className={lista.etiqueta}>Seleccionado</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`boton ${comun.botonFucsia}`}
+                          disabled={bloqueada}
+                          onClick={() => setAConfirmar(p)}
+                        >
+                          Seleccionar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
+
       </main>
 
       {aConfirmar && (

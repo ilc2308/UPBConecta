@@ -21,6 +21,7 @@ export function AppRouter() {
           <Route path="/mis-publicaciones" element={<MisPublicacionesPage />} />
           <Route path="/ofertas/:id" element={<OfertaDetallePage />} />
           <Route path="/ofertas/:id/postulados" element={<PostuladosPage />} />
+                    <Route path="/mis-ofertas/:id/postulados" element={<PostuladosPage />} />
           <Route path="/tareas-pendientes" element={<TareasPendientesPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />

@@ -88,6 +88,7 @@ export function MisPublicacionesPage() {
                   <div><dt>Ubicación</dt><dd>{o.ubicacion}</dd></div>
                 </dl>
                 <p className={styles.publicada}>Publicada el {formatearFecha(o.fechaPublicacion)}</p>
+                                <p className={styles.publicada}>Postulados: {o.totalPostulados ?? 0}</p>
                 <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
               </li>
             ))}
