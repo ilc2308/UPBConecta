@@ -2,10 +2,12 @@ package co.edu.upb.upbconecta.service;
 
 import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.domain.Oferta;
+import co.edu.upb.upbconecta.dto.ActualizarEstadoOfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaCreateDTO;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
 import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
+import co.edu.upb.upbconecta.exception.AccesoDenegadoException;
 import co.edu.upb.upbconecta.exception.ConflictoNegocioException;
 import co.edu.upb.upbconecta.exception.ResourceNotFoundException;
 import co.edu.upb.upbconecta.model.RolUsuario;
@@ -35,7 +37,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Reglas de OfertaService (UPBCONECT-39, 40 y 37), sin base de datos: el repositorio es simulado. */
+/** Reglas de OfertaService (UPBCONECT-39, 40, 37, 41, 43 y 44), sin base de datos: el repositorio es simulado. */
 @ExtendWith(MockitoExtension.class)
 class OfertaServiceTest {
 
@@ -199,5 +201,128 @@ class OfertaServiceTest {
 
         assertThatThrownBy(() -> ofertaService.obtenerDetalle(1L, ana))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // --- UPBCONECT-44 ---
+
+    @Test
+    void actualizarEstadoAFinalizadaDesdeEnProcesoConExito() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        oferta.ponerEnProceso();
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+        ActualizarEstadoOfertaDTO dto = new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA);
+
+        OfertaDTO resultado = ofertaService.actualizarEstado(1L, dto, emp);
+
+        assertThat(resultado.estado()).isEqualTo(EstadoOferta.FINALIZADA);
+        assertThat(resultado.fechaCierre()).isNotNull();
+    }
+
+    @Test
+    void actualizarEstadoAEnProcesoConExito() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+        ActualizarEstadoOfertaDTO dto = new ActualizarEstadoOfertaDTO(EstadoOferta.EN_PROCESO);
+
+        OfertaDTO resultado = ofertaService.actualizarEstado(1L, dto, emp);
+
+        assertThat(resultado.estado()).isEqualTo(EstadoOferta.EN_PROCESO);
+    }
+    @Test
+    void actualizarEstadoAFinalizadaConExito() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+        ActualizarEstadoOfertaDTO dto = new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA);
+
+        OfertaDTO resultado = ofertaService.actualizarEstado(1L, dto, emp);
+
+        assertThat(resultado.estado()).isEqualTo(EstadoOferta.FINALIZADA);
+        assertThat(resultado.fechaCierre()).isNotNull();
+        assertThat(resultado.estudianteAsignadoCorreo()).isEqualTo("est@upb.edu.co");
+    }
+
+    @Test
+    void actualizarEstadoOfertaInexistenteLanza404() {
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA), ana))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void actualizarEstadoNoDuenoLanza403() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        assertThatThrownBy(() -> ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA), ana))
+                .isInstanceOf(AccesoDenegadoException.class);
+    }
+
+    @Test
+    void actualizarEstadoDesdeAbiertaLanza409() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1)); // estado ABIERTA
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+
+        assertThatThrownBy(() -> ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA), emp))
+                .isInstanceOf(ConflictoNegocioException.class)
+                .hasMessageContaining("ASIGNADA");
+    }
+
+    @Test
+    void actualizarEstadoYaFinalizadaLanza409() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        oferta.finalizar(LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+
+        assertThatThrownBy(() -> ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA), emp))
+                .isInstanceOf(ConflictoNegocioException.class)
+                .hasMessageContaining("ya se encuentra finalizada");
+    }
+
+    @Test
+    void actualizarEstadoTransicionNoPermitidaLanza409() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+        SesionService.Usuario emp = new SesionService.Usuario("emp@upb.edu.co", "Empleador");
+
+        assertThatThrownBy(() -> ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.ABIERTA), emp))
+                .isInstanceOf(ConflictoNegocioException.class)
+                .hasMessageContaining("no permitida");
+    }
+
+    @Test
+    void misTrabajosAsignadosConsultaEstadosAsignadaEnProcesoYFinalizada() {
+        when(ofertas.findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
+                eq("ana@upb.edu.co"), eq(List.of(EstadoOferta.ASIGNADA, EstadoOferta.EN_PROCESO, EstadoOferta.FINALIZADA))))
+                .thenReturn(List.of());
+
+        List<OfertaDTO> resultado = ofertaService.misTrabajosAsignados(ana);
+
+        assertThat(resultado).isEmpty();
+        verify(ofertas).findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
+                eq("ana@upb.edu.co"), eq(List.of(EstadoOferta.ASIGNADA, EstadoOferta.EN_PROCESO, EstadoOferta.FINALIZADA)));
     }
 }

@@ -40,4 +40,8 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     /** Trabajos asignados a un estudiante, el mas proximo a vencer primero. (UPBCONECT-43) */
     List<Oferta> findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaLimiteAsc(
             String correo, Collection<EstadoOferta> estados);
+
+    /** Trabajos asignados y finalizados de un estudiante (UPBCONECT-44). */
+    List<Oferta> findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaAsignacionDesc(
+            String correo, Collection<EstadoOferta> estados);
 }

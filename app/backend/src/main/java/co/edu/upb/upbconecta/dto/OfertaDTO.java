@@ -21,14 +21,19 @@ public record OfertaDTO(
         EstadoOferta estado,
         LocalDateTime fechaPublicacion,
         String publicadorCorreo,
+        String estudianteAsignadoNombre,
+        String estudianteAsignadoCorreo,
+        LocalDateTime fechaAsignacion,
+        LocalDateTime fechaCierre,
         long totalPostulados
 ) {
-    /** Constructor sin conteo (queda en 0), para no cambiar los demas usos del DTO. */
-    public OfertaDTO(Long id, String titulo, String actividad, String condiciones, Integer valorOfrecido,
-                     LocalDateTime fechaLimite, boolean urgente, String ubicacion, EstadoOferta estado,
-                     LocalDateTime fechaPublicacion, String publicadorCorreo) {
-        this(id, titulo, actividad, condiciones, valorOfrecido, fechaLimite, urgente, ubicacion, estado,
-                fechaPublicacion, publicadorCorreo, 0L);
+    /** Constructor sin asignacion ni conteo (quedan en null/0), para no cambiar los demas usos del DTO. */
+    public OfertaDTO(Long id, String titulo, String actividad, String condiciones,
+                     Integer valorOfrecido, LocalDateTime fechaLimite, boolean urgente,
+                     String ubicacion, EstadoOferta estado, LocalDateTime fechaPublicacion,
+                     String publicadorCorreo) {
+        this(id, titulo, actividad, condiciones, valorOfrecido, fechaLimite, urgente,
+                ubicacion, estado, fechaPublicacion, publicadorCorreo, null, null, null, null, 0L);
     }
 
     public static OfertaDTO desde(Oferta o) {
@@ -36,8 +41,25 @@ public record OfertaDTO(
     }
 
     public static OfertaDTO conConteo(Oferta o, long totalPostulados) {
-        return new OfertaDTO(o.getId(), o.getTitulo(), o.getActividad(), o.getCondiciones(),
-                o.getValorOfrecido(), o.getFechaLimite(), o.isUrgente(), o.getUbicacion(),
-                o.getEstado(), o.getFechaPublicacion(), o.getPublicadorCorreo(), totalPostulados);
+        String estNombre = o.getEstudianteAsignado() != null ? o.getEstudianteAsignado().getNombre() : null;
+        String estCorreo = o.getEstudianteAsignado() != null ? o.getEstudianteAsignado().getCorreo() : null;
+        return new OfertaDTO(
+                o.getId(),
+                o.getTitulo(),
+                o.getActividad(),
+                o.getCondiciones(),
+                o.getValorOfrecido(),
+                o.getFechaLimite(),
+                o.isUrgente(),
+                o.getUbicacion(),
+                o.getEstado(),
+                o.getFechaPublicacion(),
+                o.getPublicadorCorreo(),
+                estNombre,
+                estCorreo,
+                o.getFechaAsignacion(),
+                o.getFechaCierre(),
+                totalPostulados
+        );
     }
 }

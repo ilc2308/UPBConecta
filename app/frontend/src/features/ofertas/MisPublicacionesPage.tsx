@@ -7,13 +7,14 @@ import { ofertasApi } from './ofertasApi'
 import type { Oferta } from './ofertasApi'
 import type { EstadoPublicada } from './PostJobPage'
 import { NOMBRE_ESTADO, formatearFecha, formatearPesos } from './formato'
+import { ConfirmarFinalizarModal } from './ConfirmarFinalizarModal'
 import comun from './ofertas.module.css'
 import styles from './MisPublicacionesPage.module.css'
 
 /**
- * "Mis publicaciones" (Your Posts): ofertas del usuario de la sesion (UPBCONECT-40).
+ * "Mis publicaciones" (Your Posts): ofertas del usuario de la sesion (UPBCONECT-40 y 44).
  * Al llegar desde "Publicar trabajo" muestra "¡Publicado!" y resalta la oferta nueva.
- * TODO(UPBCONECT-37): mostrar dentro del layout con menu lateral cuando exista.
+ * Permite al empleador finalizar colaboraciones en estado ASIGNADA (UPBCONECT-44).
  */
 export function MisPublicacionesPage() {
   const { cerrarSesion } = useAuth()
@@ -22,6 +23,10 @@ export function MisPublicacionesPage() {
   const [publicadaId] = useState(() => (location.state as EstadoPublicada | null)?.publicadaId)
   const [ofertas, setOfertas] = useState<Oferta[] | null>(null)
   const [error, setError] = useState(false)
+  const [ofertaAFinalizar, setOfertaAFinalizar] = useState<Oferta | null>(null)
+  const [finalizando, setFinalizando] = useState(false)
+  const [notaFinalizada, setNotaFinalizada] = useState<string | null>(null)
+  const [errorFinalizar, setErrorFinalizar] = useState<string | null>(null)
 
   useEffect(() => {
     // Se limpia el estado de la navegacion para que "¡Publicado!" no reaparezca al recargar.
@@ -38,6 +43,28 @@ export function MisPublicacionesPage() {
       })
   }, [cerrarSesion])
 
+  const handleConfirmarFinalizar = async () => {
+    if (!ofertaAFinalizar) return
+    setFinalizando(true)
+    setErrorFinalizar(null)
+    try {
+      const actualizada = await ofertasApi.actualizarEstado(ofertaAFinalizar.id, 'FINALIZADA')
+      setOfertas((prev) =>
+        prev ? prev.map((o) => (o.id === actualizada.id ? actualizada : o)) : prev
+      )
+      setNotaFinalizada(`El trabajo «${ofertaAFinalizar.titulo}» fue finalizado correctamente`)
+      setOfertaAFinalizar(null)
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        await cerrarSesion()
+      } else {
+        setErrorFinalizar('No se pudo finalizar el trabajo. Inténtalo de nuevo.')
+      }
+    } finally {
+      setFinalizando(false)
+    }
+  }
+
   return (
     <>
       <Header />
@@ -52,6 +79,19 @@ export function MisPublicacionesPage() {
           <p className={`${comun.nota} ${styles.exito}`} role="status">
             <span className={comun.check} aria-hidden="true">✓</span>
             <span><strong>¡Publicado!</strong> La publicación fue creada correctamente</span>
+          </p>
+        )}
+
+        {notaFinalizada && (
+          <p className={`${comun.nota} ${styles.exito}`} role="status">
+            <span className={comun.check} aria-hidden="true">✓</span>
+            <span><strong>¡Trabajo finalizado!</strong> {notaFinalizada}</span>
+          </p>
+        )}
+
+        {errorFinalizar && (
+          <p className={`${comun.nota} ${comun.notaError}`} role="alert">
+            {errorFinalizar}
           </p>
         )}
 
@@ -78,7 +118,9 @@ export function MisPublicacionesPage() {
                   <h2 className={styles.nombre}>{o.titulo}</h2>
                   <div className={styles.etiquetas}>
                     {o.urgente && <span className={`${styles.etiqueta} ${styles.urgente}`}>Urgente</span>}
-                    <span className={styles.etiqueta}>{NOMBRE_ESTADO[o.estado]}</span>
+                    <span className={`${styles.etiqueta} ${styles[o.estado.toLowerCase()] ?? ''}`}>
+                      {NOMBRE_ESTADO[o.estado]}
+                    </span>
                   </div>
                 </div>
                 <p className={styles.actividad}>{o.actividad}</p>
@@ -87,12 +129,58 @@ export function MisPublicacionesPage() {
                   <div><dt>Tiempo límite</dt><dd>{formatearFecha(o.fechaLimite)}</dd></div>
                   <div><dt>Ubicación</dt><dd>{o.ubicacion}</dd></div>
                 </dl>
-                <p className={styles.publicada}>Publicada el {formatearFecha(o.fechaPublicacion)}</p>
-                                <p className={styles.publicada}>Postulados: {o.totalPostulados ?? 0}</p>
-                <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
+
+                {(o.estudianteAsignadoNombre || o.estudianteAsignadoCorreo) && (
+                  <dl className={styles.asignado}>
+                    <dt>Estudiante asignado</dt>
+                    <dd>
+                      {o.estudianteAsignadoNombre ?? o.estudianteAsignadoCorreo}
+                      {o.estudianteAsignadoNombre && o.estudianteAsignadoCorreo && ` (${o.estudianteAsignadoCorreo})`}
+                    </dd>
+                  </dl>
+                )}
+
+                <div className={styles.pie}>
+                  <p className={styles.publicada}>
+                    Publicada el {formatearFecha(o.fechaPublicacion)}
+                    {o.fechaCierre && ` · Finalizada el ${formatearFecha(o.fechaCierre)}`}
+                  </p>
+                  <p className={styles.publicada}>Postulados: {o.totalPostulados ?? 0}</p>
+                  <div className={styles.acciones}>
+                    {o.estado === 'ABIERTA' && (
+                      <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
+                    )}
+                    {(o.estado === 'ASIGNADA' || o.estado === 'EN_PROCESO') && (
+                      <>
+                        <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
+                        <button
+                          type="button"
+                          className={styles.botonFinalizar}
+                          onClick={() => setOfertaAFinalizar(o)}
+                        >
+                          Finalizar trabajo
+                        </button>
+                      </>
+                    )}
+                    {o.estado === 'FINALIZADA' && (
+                      <span className={styles.finalizadaNota}>Trabajo finalizado</span>
+                    )}
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
+        )}
+
+        {ofertaAFinalizar && (
+          <ConfirmarFinalizarModal
+            titulo={ofertaAFinalizar.titulo}
+            enviando={finalizando}
+            onCancelar={() => {
+              if (!finalizando) setOfertaAFinalizar(null)
+            }}
+            onConfirmar={handleConfirmarFinalizar}
+          />
         )}
       </main>
     </>
