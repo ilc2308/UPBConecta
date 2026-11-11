@@ -350,7 +350,7 @@ class OfertaControllerWebTest {
         OfertaDTO ofertaFinalizada = new OfertaDTO(1L, "Titulo", "Actividad", "Condiciones", 1000,
                 LocalDateTime.of(2099, 1, 1, 8, 0), false, "Bloque 7", EstadoOferta.FINALIZADA,
                 LocalDateTime.of(2026, 1, 1, 8, 0), "demo@upb.edu.co", "Estudiante",
-                "est@upb.edu.co", LocalDateTime.now(), LocalDateTime.now());
+                "est@upb.edu.co", LocalDateTime.now(), LocalDateTime.now(), 0L);
 
         when(ofertaService.actualizarEstado(eq(1L), eq(new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA)), any()))
                 .thenReturn(ofertaFinalizada);
