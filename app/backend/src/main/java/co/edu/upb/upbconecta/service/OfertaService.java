@@ -3,6 +3,8 @@ package co.edu.upb.upbconecta.service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -74,8 +76,16 @@ public class OfertaService {
     /** Publicaciones del usuario de la sesion, la mas reciente primero ("Mis publicaciones"). */
     @Transactional(readOnly = true)
     public List<OfertaDTO> misOfertas(SesionService.Usuario usuario) {
-        return ofertas.findByPublicadorCorreoOrderByFechaPublicacionDesc(usuario.correo()).stream()
-                .map(OfertaDTO::desde)
+                List<Oferta> mias = ofertas.findByPublicadorCorreoOrderByFechaPublicacionDesc(usuario.correo());
+        if (mias.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Long> conteos = new HashMap<>();
+        for (Object[] fila : postulaciones.contarPorOferta(mias.stream().map(Oferta::getId).toList())) {
+            conteos.put(((Number) fila[0]).longValue(), ((Number) fila[1]).longValue());
+        }
+        return mias.stream()
+                .map(o -> OfertaDTO.conConteo(o, conteos.getOrDefault(o.getId(), 0L)))
                 .toList();
     }
 

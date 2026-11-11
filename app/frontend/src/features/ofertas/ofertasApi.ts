@@ -23,6 +23,8 @@ export interface Oferta extends OfertaNueva {
   estudianteAsignadoCorreo?: string | null
   fechaAsignacion?: string | null
   fechaCierre?: string | null
+    /** Cantidad de postulaciones recibidas; solo viene en GET /ofertas/mias (UPBCONECT-42). */
+  totalPostulados?: number
 }
 
 /** Detalle de una oferta (OfertaDetalleDTO), con los datos del empleador. */

@@ -145,6 +145,7 @@ export function MisPublicacionesPage() {
                     Publicada el {formatearFecha(o.fechaPublicacion)}
                     {o.fechaCierre && ` · Finalizada el ${formatearFecha(o.fechaCierre)}`}
                   </p>
+                  <p className={styles.publicada}>Postulados: {o.totalPostulados ?? 0}</p>
                   <div className={styles.acciones}>
                     {o.estado === 'ABIERTA' && (
                       <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
