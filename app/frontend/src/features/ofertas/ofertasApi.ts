@@ -19,6 +19,8 @@ export interface Oferta extends OfertaNueva {
   estado: 'ABIERTA' | 'ASIGNADA' | 'EN_PROCESO' | 'FINALIZADA' | 'CANCELADA'
   fechaPublicacion: string
   publicadorCorreo: string
+    /** Cantidad de postulaciones recibidas; solo viene en GET /ofertas/mias (UPBCONECT-42). */
+  totalPostulados?: number
 }
 
 /** Detalle de una oferta (OfertaDetalleDTO), con los datos del empleador. */
