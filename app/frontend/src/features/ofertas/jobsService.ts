@@ -24,8 +24,11 @@ export type OfertaResumen = Pick<
 export const jobsService = {
   /**
    * Obtiene la pagina de ofertas ABIERTAS y vigentes, ordenadas de la mas reciente a la mas antigua.
+   * Con q filtra por palabra clave en titulo, actividad y condiciones (UPBCONECT-38).
    * Requiere sesion activa (el backend responde 401 si no la hay).
    */
-  getActive: async (page = 0, size = 10): Promise<Pagina<OfertaResumen>> =>
-    (await api.get<Pagina<OfertaResumen>>('/ofertas', { params: { page, size } })).data,
+  getActive: async (page = 0, size = 10, q = ''): Promise<Pagina<OfertaResumen>> =>
+    (await api.get<Pagina<OfertaResumen>>('/ofertas', {
+      params: q ? { page, size, q } : { page, size },
+    })).data,
 }
