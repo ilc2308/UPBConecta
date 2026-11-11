@@ -70,4 +70,9 @@ public class UsuarioEntity {
     public String getCarrera() { return carrera; }
     public Instant getFechaRegistro() { return fechaRegistro; }
     public boolean isActivo() { return activo; }
+
+    /** El usuario alterna entre ESTUDIANTE y EMPLEADOR sin cambiar de cuenta. */
+    public void cambiarRol(RolUsuario nuevoRol) {
+        this.rol = nuevoRol;
+    }
 }
