@@ -18,4 +18,6 @@ export const authApi = {
     (await api.post<AuthResponse>('/auth/microsoft/login', { idToken })).data,
   registrarMicrosoft: async (idToken: string, rol: RolUsuario, carrera: string) =>
     (await api.post<AuthResponse>('/auth/microsoft/register', { idToken, rol, carrera })).data,
+  cambiarRol: async (rol: RolUsuario) =>
+    (await api.patch<AuthResponse>('/auth/rol', { rol })).data,
 }
