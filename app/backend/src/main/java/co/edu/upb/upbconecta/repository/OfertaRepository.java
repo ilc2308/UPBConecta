@@ -49,15 +49,16 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
      * Busqueda por palabra clave sobre titulo, actividad y condiciones, sin distinguir
      * mayusculas ni tildes. Mantiene la regla de ofertas ABIERTAS y vigentes. (UPBCONECT-38)
      * El patron ya llega con los comodines % y con los caracteres especiales escapados con '\'.
+     * Se usa cast(... as string) para que Hibernate 7 infiera el tipo String en el operando de LIKE.
      */
     @Query("""
             select o from Oferta o
             where o.estado = :estado
               and o.fechaLimite > :ahora
               and (
-                   function('translate', lower(o.titulo), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
-                or function('translate', lower(o.actividad), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
-                or function('translate', lower(o.condiciones), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
+                   cast(function('translate', lower(o.titulo), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') as string) like :patron escape '\\'
+                or cast(function('translate', lower(o.actividad), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') as string) like :patron escape '\\'
+                or cast(function('translate', lower(o.condiciones), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') as string) like :patron escape '\\'
               )
             """)
     Page<Oferta> buscarActivas(@Param("estado") EstadoOferta estado,
