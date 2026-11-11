@@ -47,14 +47,14 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
      * mayusculas ni tildes. Mantiene la regla de ofertas ABIERTAS y vigentes. (UPBCONECT-38)
      * El patron ya llega con los comodines % y con los caracteres especiales escapados con '\'.
      */
-    @Query("""
+       @Query("""
             select o from Oferta o
             where o.estado = :estado
               and o.fechaLimite > :ahora
               and (
-                   lower(function('unaccent', o.titulo))      like lower(function('unaccent', :patron)) escape '\\'
-                or lower(function('unaccent', o.actividad))   like lower(function('unaccent', :patron)) escape '\\'
-                or lower(function('unaccent', o.condiciones)) like lower(function('unaccent', :patron)) escape '\\'
+                   function('translate', lower(o.titulo), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
+                or function('translate', lower(o.actividad), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
+                or function('translate', lower(o.condiciones), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun') like :patron escape '\\'
               )
             """)
     Page<Oferta> buscarActivas(@Param("estado") EstadoOferta estado,
