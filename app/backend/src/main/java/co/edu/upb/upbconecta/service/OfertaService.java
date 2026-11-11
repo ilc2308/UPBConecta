@@ -24,7 +24,7 @@ import co.edu.upb.upbconecta.repository.OfertaRepository;
 import co.edu.upb.upbconecta.repository.PostulacionRepository;
 import co.edu.upb.upbconecta.repository.UsuarioRepository;
 
-/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37, 41 y 43). */
+/** Reglas de negocio de las ofertas (UPBCONECT-39, 40, 37, 38, 41 y 43). */
 @Service
 public class OfertaService {
 
@@ -93,6 +93,7 @@ public class OfertaService {
                 .findByEstadoAndFechaLimiteAfter(EstadoOferta.ABIERTA, LocalDateTime.now(), pageable)
                 .map(OfertaResumenDTO::desde);
     }
+
     /**
      * Busqueda de ofertas activas por palabra clave (UPBCONECT-38).
      * Con menos de 2 caracteres (ya sin espacios) no busca y devuelve el listado normal.
@@ -107,18 +108,19 @@ public class OfertaService {
         if (termino.length() < 2) {
             return listarActivas(page, size);
         }
-                  String patron = "%" + escaparLike(sinTildes(termino)) + "%";
+        String patron = "%" + escaparLike(sinTildes(termino)) + "%";
         int tamano = Math.min(size, 50);
         PageRequest pageable = PageRequest.of(page, tamano, Sort.by(Sort.Direction.DESC, "fechaPublicacion"));
         return ofertas
                 .buscarActivas(EstadoOferta.ABIERTA, LocalDateTime.now(), patron, pageable)
                 .map(OfertaResumenDTO::desde);
-                    /** Quita tildes y pasa a minusculas, igual que hace la consulta con las columnas. */
+    }
+
+    /** Quita tildes y pasa a minusculas, igual que hace la consulta con las columnas. */
     private static String sinTildes(String texto) {
         return java.text.Normalizer.normalize(texto, java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
                 .toLowerCase(java.util.Locale.ROOT);
-    }
     }
 
     /** Escapa \, % y _ para que se busquen como texto normal dentro de un LIKE. */

@@ -40,14 +40,13 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
     /** Trabajos asignados a un estudiante, el mas proximo a vencer primero. (UPBCONECT-43) */
     List<Oferta> findByEstudianteAsignadoCorreoAndEstadoInOrderByFechaLimiteAsc(
             String correo, Collection<EstadoOferta> estados);
-}
 
     /**
      * Busqueda por palabra clave sobre titulo, actividad y condiciones, sin distinguir
      * mayusculas ni tildes. Mantiene la regla de ofertas ABIERTAS y vigentes. (UPBCONECT-38)
      * El patron ya llega con los comodines % y con los caracteres especiales escapados con '\'.
      */
-       @Query("""
+    @Query("""
             select o from Oferta o
             where o.estado = :estado
               and o.fechaLimite > :ahora
@@ -61,3 +60,4 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
                                @Param("ahora") LocalDateTime ahora,
                                @Param("patron") String patron,
                                Pageable pageable);
+}

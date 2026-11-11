@@ -72,13 +72,15 @@ public class OfertaController {
 
     /**
      * Listado paginado de ofertas ABIERTAS y vigentes, ordenadas de la mas reciente a la mas antigua.
+     * Con el parametro opcional {@code q} filtra por palabra clave en titulo, actividad y condiciones.
      * Solo se devuelven ofertas cuya fecha_limite es estrictamente posterior al momento de la consulta.
      *
+     * @param q    palabra clave de busqueda (opcional, minimo 2 caracteres para activar el filtro)
      * @param page pagina solicitada, base 0 (default: 0)
      * @param size elementos por pagina, entre 1 y 50 (default: 10)
      */
     @GetMapping
-    public     public Page<OfertaResumenDTO> listarActivas(
+    public Page<OfertaResumenDTO> listarActivas(
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size) {
