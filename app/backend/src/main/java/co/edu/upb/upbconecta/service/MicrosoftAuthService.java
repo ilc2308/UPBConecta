@@ -115,6 +115,21 @@ public class MicrosoftAuthService {
         }
     }
 
+    /** Cambia el rol activo del usuario y emite un JWT nuevo con el claim "rol" actualizado. */
+    @Transactional
+    public AuthResponse cambiarRol(String subject, RolUsuario nuevoRol) {
+        UsuarioEntity usuario;
+        try {
+            usuario = usuarios.findById(java.util.UUID.fromString(subject))
+                    .filter(UsuarioEntity::isActivo)
+                    .orElseThrow(() -> new NoAutenticadoException("La cuenta ya no esta disponible"));
+        } catch (IllegalArgumentException ex) {
+            throw new NoAutenticadoException("Token de plataforma invalido");
+        }
+        usuario.cambiarRol(nuevoRol);
+        return emitirToken(usuario);
+    }
+
     private static JwtDecoder crearDecoderMicrosoft(String tenantId, String clientId) {
         if (tenantId.isBlank() || clientId.isBlank()) {
             return token -> {
