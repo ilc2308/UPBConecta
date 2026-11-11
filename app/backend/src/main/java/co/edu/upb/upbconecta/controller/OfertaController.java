@@ -78,10 +78,14 @@ public class OfertaController {
      * @param size elementos por pagina, entre 1 y 50 (default: 10)
      */
     @GetMapping
-    public Page<OfertaResumenDTO> listarActivas(
+    public     public Page<OfertaResumenDTO> listarActivas(
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size) {
-        return ofertaService.listarActivas(page, size);
+        if (q == null || q.isBlank()) {
+            return ofertaService.listarActivas(page, size);
+        }
+        return ofertaService.buscarActivas(q, page, size);
     }
 
     @GetMapping("/{id}")
