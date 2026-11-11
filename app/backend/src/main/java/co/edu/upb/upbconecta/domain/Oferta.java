@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
 /**
  * Trabajo publicado en la plataforma (tabla "oferta").
  * Cualquier usuario autenticado puede publicar; no hay roles.
- * La usan tambien el listado del Dashboard (UPBCONECT-37), la busqueda (38) y la postulacion (41).
+ * La usan tambien el listado del Dashboard (UPBCONECT-37), la busqueda (38), la postulacion (41),
+ * la seleccion (43) y el cierre/finalizacion (44).
  */
 @Entity
 @Table(name = "oferta", indexes = @Index(name = "idx_oferta_estado_fecha", columnList = "estado, fecha_publicacion"))
@@ -70,6 +71,10 @@ public class Oferta {
     @Column(name = "fecha_asignacion")
     private LocalDateTime fechaAsignacion;
 
+    /** Momento en que el empleador finaliza el trabajo (UPBCONECT-44). */
+    @Column(name = "fecha_cierre")
+    private LocalDateTime fechaCierre;
+
     /** Requerido por JPA. */
     protected Oferta() {
     }
@@ -95,6 +100,15 @@ public class Oferta {
         this.estado = EstadoOferta.ASIGNADA;
     }
 
+    public void ponerEnProceso() {
+        this.estado = EstadoOferta.EN_PROCESO;
+    }
+
+    public void finalizar(LocalDateTime fecha) {
+        this.estado = EstadoOferta.FINALIZADA;
+        this.fechaCierre = fecha;
+    }
+
     public Long getId() { return id; }
     public String getTitulo() { return titulo; }
     public String getActividad() { return actividad; }
@@ -108,4 +122,5 @@ public class Oferta {
     public String getPublicadorCorreo() { return publicadorCorreo; }
     public UsuarioEntity getEstudianteAsignado() { return estudianteAsignado; }
     public LocalDateTime getFechaAsignacion() { return fechaAsignacion; }
+    public LocalDateTime getFechaCierre() { return fechaCierre; }
 }

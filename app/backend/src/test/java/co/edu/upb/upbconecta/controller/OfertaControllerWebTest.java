@@ -4,6 +4,7 @@ import co.edu.upb.upbconecta.config.CorsConfig;
 import co.edu.upb.upbconecta.config.SecurityConfig;
 import co.edu.upb.upbconecta.domain.EstadoOferta;
 import co.edu.upb.upbconecta.domain.EstadoPostulacion;
+import co.edu.upb.upbconecta.dto.ActualizarEstadoOfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaDTO;
 import co.edu.upb.upbconecta.dto.OfertaDetalleDTO;
 import co.edu.upb.upbconecta.dto.OfertaResumenDTO;
@@ -48,6 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * POST /api/v1/ofertas (UPBCONECT-39 y 40): 201 con sesion, 400 datos invalidos, 401 sin sesion, 409 duplicado.
  * GET /api/v1/ofertas/mias (UPBCONECT-40): 200 con las publicaciones del usuario, 401 sin sesion.
  * GET /api/v1/ofertas (UPBCONECT-37): 200 con listado paginado de ofertas activas, 401 sin sesion.
+ * PATCH /api/v1/ofertas/{id}/estado (UPBCONECT-44): 200 finalizada, 401 sin sesion, 403 no dueno, 404 no existe, 409 transicion invalida.
+ * GET /api/v1/ofertas/asignadas/mias (UPBCONECT-44): 200 con trabajos asignados y finalizados del estudiante.
  */
 @WebMvcTest(OfertaController.class)
 @Import({SecurityConfig.class, CorsConfig.class, SesionService.class,
@@ -92,7 +95,6 @@ class OfertaControllerWebTest {
     }
 
     // --- UPBCONECT-39 / 40 ---
-
 
     @Test
     void publicaConJwtInstitucionalYResponde201() throws Exception {
@@ -196,7 +198,6 @@ class OfertaControllerWebTest {
         OfertaResumenDTO oferta = new OfertaResumenDTO(1L, "Apoyo en feria", "Organizar el espacio",
                 80000, LocalDateTime.of(2099, 12, 31, 18, 0), false, "Bloque 7",
                 EstadoOferta.ABIERTA, LocalDateTime.now(), "empleador@upb.edu.co");
-
         when(ofertaService.listarActivas(anyInt(), anyInt()))
                 .thenReturn(new PageImpl<>(List.of(oferta), PageRequest.of(0, 10), 1));
 
@@ -340,5 +341,85 @@ class OfertaControllerWebTest {
         mockMvc.perform(get("/api/v1/ofertas/asignadas").cookie(sesion()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    // --- UPBCONECT-44 ---
+
+    @Test
+    void actualizarEstadoAFinalizadaResponde200() throws Exception {
+        OfertaDTO ofertaFinalizada = new OfertaDTO(1L, "Titulo", "Actividad", "Condiciones", 1000,
+                LocalDateTime.of(2099, 1, 1, 8, 0), false, "Bloque 7", EstadoOferta.FINALIZADA,
+                LocalDateTime.of(2026, 1, 1, 8, 0), "demo@upb.edu.co", "Estudiante",
+                "est@upb.edu.co", LocalDateTime.now(), LocalDateTime.now(), 0L);
+
+        when(ofertaService.actualizarEstado(eq(1L), eq(new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA)), any()))
+                .thenReturn(ofertaFinalizada);
+
+        mockMvc.perform(patch("/api/v1/ofertas/1/estado")
+                        .cookie(sesion())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\": \"FINALIZADA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("FINALIZADA"));
+    }
+
+    @Test
+    void actualizarEstadoSinSesionResponde401() throws Exception {
+        mockMvc.perform(patch("/api/v1/ofertas/1/estado")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\": \"FINALIZADA\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void actualizarEstadoNoDuenoResponde403() throws Exception {
+        when(ofertaService.actualizarEstado(eq(1L), any(), any()))
+                .thenThrow(new AccesoDenegadoException("Solo quien publicó la oferta puede actualizar su estado"));
+
+        mockMvc.perform(patch("/api/v1/ofertas/1/estado")
+                        .cookie(sesion())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\": \"FINALIZADA\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void actualizarEstadoOfertaInexistenteResponde404() throws Exception {
+        when(ofertaService.actualizarEstado(eq(99L), any(), any()))
+                .thenThrow(new ResourceNotFoundException("No existe"));
+
+        mockMvc.perform(patch("/api/v1/ofertas/99/estado")
+                        .cookie(sesion())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\": \"FINALIZADA\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void actualizarEstadoTransicionInvalidaResponde409() throws Exception {
+        when(ofertaService.actualizarEstado(eq(1L), any(), any()))
+                .thenThrow(new ConflictoNegocioException("Transición de estado no permitida"));
+
+        mockMvc.perform(patch("/api/v1/ofertas/1/estado")
+                        .cookie(sesion())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\": \"FINALIZADA\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Transición de estado no permitida"));
+    }
+
+    @Test
+    void misAsignadasResponde200() throws Exception {
+        when(ofertaService.misTrabajosAsignados(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/ofertas/asignadas/mias").cookie(sesion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void misAsignadasSinSesionResponde401() throws Exception {
+        mockMvc.perform(get("/api/v1/ofertas/asignadas/mias"))
+                .andExpect(status().isUnauthorized());
     }
 }

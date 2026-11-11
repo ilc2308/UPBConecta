@@ -19,6 +19,12 @@ export interface Oferta extends OfertaNueva {
   estado: 'ABIERTA' | 'ASIGNADA' | 'EN_PROCESO' | 'FINALIZADA' | 'CANCELADA'
   fechaPublicacion: string
   publicadorCorreo: string
+  estudianteAsignadoNombre?: string | null
+  estudianteAsignadoCorreo?: string | null
+  fechaAsignacion?: string | null
+  fechaCierre?: string | null
+    /** Cantidad de postulaciones recibidas; solo viene en GET /ofertas/mias (UPBCONECT-42). */
+  totalPostulados?: number
 }
 
 /** Detalle de una oferta (OfertaDetalleDTO), con los datos del empleador. */
@@ -60,10 +66,15 @@ export const ofertasApi = {
   mias: async () => (await api.get<Oferta[]>('/ofertas/mias')).data,
   /** Trabajos asignados al usuario de la sesion (UPBCONECT-43). */
   asignadas: async () => (await api.get<Oferta[]>('/ofertas/asignadas')).data,
+  /** Trabajos asignados y finalizados del estudiante de la sesion (UPBCONECT-44). */
+  misAsignadas: async () => (await api.get<Oferta[]>('/ofertas/asignadas/mias')).data,
   detalle: async (id: string) => (await api.get<OfertaDetalle>(`/ofertas/${id}`)).data,
   postular: async (id: string) => (await api.post<Postulante>(`/ofertas/${id}/postulaciones`)).data,
   postulantes: async (id: string) => (await api.get<Postulante[]>(`/ofertas/${id}/postulaciones`)).data,
   /** Asigna la oferta a un postulante y devuelve la lista actualizada (UPBCONECT-43). */
   seleccionar: async (id: string, postulacionId: number) =>
     (await api.patch<Postulante[]>(`/ofertas/${id}/postulaciones/${postulacionId}/seleccionar`)).data,
+  /** Actualiza el estado de la oferta (UPBCONECT-44). */
+  actualizarEstado: async (id: number | string, estado: 'FINALIZADA' | 'EN_PROCESO') =>
+    (await api.patch<Oferta>(`/ofertas/${id}/estado`, { estado })).data,
 }
