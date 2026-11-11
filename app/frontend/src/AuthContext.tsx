@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { authApi } from './authApi'
-import type { RolUsuario } from './authApi'
 import { configurarToken } from './api'
 
 export interface Usuario {
@@ -20,7 +19,6 @@ interface AuthContextValue {
   iniciarSesionDemo: () => Promise<void>
   completarAutenticacion: (response: { accessToken: string; usuario: Usuario }, recordar?: boolean) => void
   cerrarSesion: () => Promise<void>
-  cambiarRol: (rol: RolUsuario) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -88,16 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [limpiarTokens])
 
-  /** Alterna el rol sin cerrar sesion: el backend devuelve un JWT nuevo con el rol actualizado. */
-  const cambiarRol = useCallback(async (rol: RolUsuario) => {
-    const recordar = localStorage.getItem('upbconecta_access_token') !== null
-    const response = await authApi.cambiarRol(rol)
-    completarAutenticacion(response, recordar)
-  }, [completarAutenticacion])
-
   const value = useMemo(
-    () => ({ usuario, estaAutenticado: usuario !== null, cargando, accessToken, iniciarSesionDemo, completarAutenticacion, cerrarSesion, cambiarRol }),
-    [usuario, cargando, accessToken, iniciarSesionDemo, completarAutenticacion, cerrarSesion, cambiarRol],
+    () => ({ usuario, estaAutenticado: usuario !== null, cargando, accessToken, iniciarSesionDemo, completarAutenticacion, cerrarSesion }),
+    [usuario, cargando, accessToken, iniciarSesionDemo, completarAutenticacion, cerrarSesion],
   )
 
   // Mientras se consulta la sesion no se muestran las rutas, para que una recarga

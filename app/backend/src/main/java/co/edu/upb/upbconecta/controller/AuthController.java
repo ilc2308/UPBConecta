@@ -1,7 +1,6 @@
 package co.edu.upb.upbconecta.controller;
 
 import co.edu.upb.upbconecta.dto.AuthResponse;
-import co.edu.upb.upbconecta.dto.CambiarRolRequest;
 import co.edu.upb.upbconecta.dto.MicrosoftRegisterRequest;
 import co.edu.upb.upbconecta.dto.MicrosoftTokenRequest;
 import co.edu.upb.upbconecta.dto.UsuarioResponse;
@@ -19,7 +18,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -67,19 +65,6 @@ public class AuthController {
     @PostMapping("/microsoft/login")
     public AuthResponse iniciarSesionMicrosoft(@Valid @RequestBody MicrosoftTokenRequest request) {
         return microsoftAuth.iniciarSesion(request.idToken());
-    }
-
-    /**
-     * Cambia el rol activo (ESTUDIANTE <-> EMPLEADOR) del usuario autenticado con JWT.
-     * /auth/** es publico en SecurityConfig, por eso aqui se exige el JWT de forma explicita.
-     */
-    @PatchMapping("/rol")
-    public AuthResponse cambiarRol(@Valid @RequestBody CambiarRolRequest request,
-                                   @AuthenticationPrincipal Jwt jwt) {
-        if (jwt == null) {
-            throw new NoAutenticadoException("Inicia sesion con tu cuenta institucional");
-        }
-        return microsoftAuth.cambiarRol(jwt.getSubject(), request.rol());
     }
 
     @GetMapping("/me")
