@@ -6,6 +6,7 @@ import { useAuth } from '../../AuthContext'
 import { mensajeDelServidor, ofertasApi } from './ofertasApi'
 import type { Oferta } from './ofertasApi'
 import { NOMBRE_ESTADO, formatearFecha, formatearPesos } from './formato'
+import { ConfirmarFinalizarModal } from './ConfirmarFinalizarModal'
 import comun from './ofertas.module.css'
 import styles from './MisPublicacionesPage.module.css'
 
@@ -13,7 +14,7 @@ type Tab = 'pendientes' | 'completadas'
 
 /**
  * "Tareas pendientes" (Pending tasks): trabajos asignados al estudiante de la sesion (UPBCONECT-43 y 44).
- * Permite iniciar las tareas asignadas, ver las que estan en proceso y los trabajos finalizados.
+ * Permite iniciar las tareas asignadas, finalizar las que estan en proceso y ver los trabajos finalizados.
  */
 export function TareasPendientesPage() {
   const { cerrarSesion } = useAuth()
@@ -22,6 +23,9 @@ export function TareasPendientesPage() {
   const [tab, setTab] = useState<Tab>('pendientes')
   const [iniciando, setIniciando] = useState<number | null>(null)
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
+  const [tareaAFinalizar, setTareaAFinalizar] = useState<Oferta | null>(null)
+  const [finalizando, setFinalizando] = useState(false)
+  const [notaFinalizada, setNotaFinalizada] = useState<string | null>(null)
 
   useEffect(() => {
     ofertasApi
@@ -51,6 +55,27 @@ export function TareasPendientesPage() {
     }
   }
 
+  /** El estudiante que hizo el trabajo lo marca como FINALIZADA (UPBCONECT-44). */
+  const finalizarTrabajo = async () => {
+    if (!tareaAFinalizar) return
+    setErrorAccion(null)
+    setFinalizando(true)
+    try {
+      const actualizada = await ofertasApi.actualizarEstado(tareaAFinalizar.id, 'FINALIZADA')
+      setTareas((prev) => (prev ? prev.map((t) => (t.id === actualizada.id ? actualizada : t)) : prev))
+      setNotaFinalizada(`El trabajo «${tareaAFinalizar.titulo}» fue finalizado correctamente`)
+      setTareaAFinalizar(null)
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        await cerrarSesion()
+      } else {
+        setErrorAccion(mensajeDelServidor(err, 'No se pudo finalizar el trabajo. Inténtalo de nuevo.'))
+      }
+    } finally {
+      setFinalizando(false)
+    }
+  }
+
   const pendientes = tareas?.filter((t) => t.estado !== 'FINALIZADA') ?? []
   const completadas = tareas?.filter((t) => t.estado === 'FINALIZADA') ?? []
   const listaActual = tab === 'pendientes' ? pendientes : completadas
@@ -71,6 +96,13 @@ export function TareasPendientesPage() {
         {errorAccion && (
           <p className={`${comun.nota} ${comun.notaError}`} role="alert">
             {errorAccion}
+          </p>
+        )}
+
+        {notaFinalizada && (
+          <p className={`${comun.nota} ${styles.exito}`} role="status">
+            <span className={comun.check} aria-hidden="true">✓</span>
+            <span><strong>¡Trabajo finalizado!</strong> {notaFinalizada}</span>
           </p>
         )}
 
@@ -143,11 +175,31 @@ export function TareasPendientesPage() {
                     {iniciando === t.id ? 'Iniciando...' : 'Iniciar trabajo'}
                   </button>
                 )}
+                {t.estado === 'EN_PROCESO' && (
+                  <button
+                    type="button"
+                    className={styles.botonFinalizar}
+                    onClick={() => setTareaAFinalizar(t)}
+                  >
+                    Finalizar trabajo
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         )}
       </main>
+
+      {tareaAFinalizar && (
+        <ConfirmarFinalizarModal
+          titulo={tareaAFinalizar.titulo}
+          enviando={finalizando}
+          onCancelar={() => {
+            if (!finalizando) setTareaAFinalizar(null)
+          }}
+          onConfirmar={finalizarTrabajo}
+        />
+      )}
     </>
   )
 }

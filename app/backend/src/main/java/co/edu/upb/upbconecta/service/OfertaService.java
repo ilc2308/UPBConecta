@@ -161,8 +161,7 @@ public class OfertaService {
     /**
      * Actualiza el estado de una oferta (UPBCONECT-44).
      * Maquina de estados: ABIERTA -> ASIGNADA -> EN_PROCESO -> FINALIZADA.
-     * El estudiante asignado (o quien publico la oferta) puede iniciar el trabajo;
-     * solo el empleador que publico la oferta puede finalizarlo.
+     * El estudiante asignado (o quien publico la oferta) puede iniciar y finalizar el trabajo.
      */
     @Transactional
     public OfertaDTO actualizarEstado(Long id, ActualizarEstadoOfertaDTO datos, SesionService.Usuario usuario) {
@@ -174,8 +173,9 @@ public class OfertaService {
                 && oferta.getEstudianteAsignado().getCorreo().equalsIgnoreCase(usuario.correo());
 
         if (datos.estado() == EstadoOferta.FINALIZADA) {
-            if (!esPublicador) {
-                throw new AccesoDenegadoException("Solo quien publicó la oferta puede finalizarla");
+            if (!esPublicador && !esEstudianteAsignado) {
+                throw new AccesoDenegadoException(
+                        "Solo el estudiante asignado o quien publicó la oferta pueden finalizar el trabajo");
             }
             if (oferta.getEstado() == EstadoOferta.FINALIZADA) {
                 throw new ConflictoNegocioException("La oferta ya se encuentra finalizada");
