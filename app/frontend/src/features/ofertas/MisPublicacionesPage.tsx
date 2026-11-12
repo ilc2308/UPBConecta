@@ -3,7 +3,7 @@ import axios from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Header } from '../../Header'
 import { useAuth } from '../../AuthContext'
-import { ofertasApi } from './ofertasApi'
+import { mensajeDelServidor, ofertasApi } from './ofertasApi'
 import type { Oferta } from './ofertasApi'
 import type { EstadoPublicada } from './PostJobPage'
 import { NOMBRE_ESTADO, formatearFecha, formatearPesos } from './formato'
@@ -27,6 +27,9 @@ export function MisPublicacionesPage() {
   const [finalizando, setFinalizando] = useState(false)
   const [notaFinalizada, setNotaFinalizada] = useState<string | null>(null)
   const [errorFinalizar, setErrorFinalizar] = useState<string | null>(null)
+  const [iniciando, setIniciando] = useState<number | null>(null)
+  const [notaEnProceso, setNotaEnProceso] = useState<string | null>(null)
+  const [errorIniciar, setErrorIniciar] = useState<string | null>(null)
 
   useEffect(() => {
     // Se limpia el estado de la navegacion para que "¡Publicado!" no reaparezca al recargar.
@@ -43,6 +46,24 @@ export function MisPublicacionesPage() {
       })
   }, [cerrarSesion])
 
+  const handleIniciarTrabajo = async (oferta: Oferta) => {
+    setErrorIniciar(null)
+    setIniciando(oferta.id)
+    try {
+      const actualizada = await ofertasApi.actualizarEstado(oferta.id, 'EN_PROCESO')
+      setOfertas((prev) => (prev ? prev.map((o) => (o.id === actualizada.id ? actualizada : o)) : prev))
+      setNotaEnProceso(`El trabajo «${oferta.titulo}» está en proceso`)
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        await cerrarSesion()
+      } else {
+        setErrorIniciar(mensajeDelServidor(err, 'No se pudo iniciar el trabajo. Inténtalo de nuevo.'))
+      }
+    } finally {
+      setIniciando(null)
+    }
+  }
+
   const handleConfirmarFinalizar = async () => {
     if (!ofertaAFinalizar) return
     setFinalizando(true)
@@ -58,7 +79,7 @@ export function MisPublicacionesPage() {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         await cerrarSesion()
       } else {
-        setErrorFinalizar('No se pudo finalizar el trabajo. Inténtalo de nuevo.')
+        setErrorFinalizar(mensajeDelServidor(err, 'No se pudo finalizar el trabajo. Inténtalo de nuevo.'))
       }
     } finally {
       setFinalizando(false)
@@ -86,6 +107,19 @@ export function MisPublicacionesPage() {
           <p className={`${comun.nota} ${styles.exito}`} role="status">
             <span className={comun.check} aria-hidden="true">✓</span>
             <span><strong>¡Trabajo finalizado!</strong> {notaFinalizada}</span>
+          </p>
+        )}
+
+        {notaEnProceso && (
+          <p className={`${comun.nota} ${styles.exito}`} role="status">
+            <span className={comun.check} aria-hidden="true">✓</span>
+            <span><strong>¡Trabajo en proceso!</strong> {notaEnProceso}</span>
+          </p>
+        )}
+
+        {errorIniciar && (
+          <p className={`${comun.nota} ${comun.notaError}`} role="alert">
+            {errorIniciar}
           </p>
         )}
 
@@ -153,6 +187,16 @@ export function MisPublicacionesPage() {
                     {(o.estado === 'ASIGNADA' || o.estado === 'EN_PROCESO') && (
                       <>
                         <Link to={`/ofertas/${o.id}/postulados`}>Ver postulados</Link>
+                        {o.estado === 'ASIGNADA' && (
+                          <button
+                            type="button"
+                            className={styles.botonIniciar}
+                            onClick={() => handleIniciarTrabajo(o)}
+                            disabled={iniciando === o.id}
+                          >
+                            {iniciando === o.id ? 'Iniciando...' : 'Iniciar trabajo'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className={styles.botonFinalizar}

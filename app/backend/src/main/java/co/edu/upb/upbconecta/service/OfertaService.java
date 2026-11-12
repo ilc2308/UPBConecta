@@ -161,18 +161,22 @@ public class OfertaService {
     /**
      * Actualiza el estado de una oferta (UPBCONECT-44).
      * Maquina de estados: ABIERTA -> ASIGNADA -> EN_PROCESO -> FINALIZADA.
-     * Solo el empleador que publico la oferta puede cerrarla.
+     * El estudiante asignado (o quien publico la oferta) puede iniciar el trabajo;
+     * solo el empleador que publico la oferta puede finalizarlo.
      */
     @Transactional
     public OfertaDTO actualizarEstado(Long id, ActualizarEstadoOfertaDTO datos, SesionService.Usuario usuario) {
         Oferta oferta = ofertas.findConBloqueoById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Oferta no encontrada con ID: " + id));
 
-        if (!oferta.getPublicadorCorreo().equalsIgnoreCase(usuario.correo())) {
-            throw new AccesoDenegadoException("Solo quien publicó la oferta puede actualizar su estado");
-        }
+        boolean esPublicador = oferta.getPublicadorCorreo().equalsIgnoreCase(usuario.correo());
+        boolean esEstudianteAsignado = oferta.getEstudianteAsignado() != null
+                && oferta.getEstudianteAsignado().getCorreo().equalsIgnoreCase(usuario.correo());
 
         if (datos.estado() == EstadoOferta.FINALIZADA) {
+            if (!esPublicador) {
+                throw new AccesoDenegadoException("Solo quien publicó la oferta puede finalizarla");
+            }
             if (oferta.getEstado() == EstadoOferta.FINALIZADA) {
                 throw new ConflictoNegocioException("La oferta ya se encuentra finalizada");
             }
@@ -184,6 +188,10 @@ public class OfertaService {
             }
             oferta.finalizar(LocalDateTime.now());
         } else if (datos.estado() == EstadoOferta.EN_PROCESO) {
+            if (!esPublicador && !esEstudianteAsignado) {
+                throw new AccesoDenegadoException(
+                        "Solo el estudiante asignado o quien publicó la oferta pueden iniciar el trabajo");
+            }
             if (oferta.getEstado() == EstadoOferta.FINALIZADA) {
                 throw new ConflictoNegocioException("No se puede pasar a en proceso un trabajo ya finalizado");
             }
@@ -195,6 +203,9 @@ public class OfertaService {
             }
             oferta.ponerEnProceso();
         } else {
+            if (!esPublicador) {
+                throw new AccesoDenegadoException("Solo quien publicó la oferta puede actualizar su estado");
+            }
             throw new ConflictoNegocioException("Transición de estado no permitida");
         }
 

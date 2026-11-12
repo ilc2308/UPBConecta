@@ -3,7 +3,7 @@ import axios from 'axios'
 import { Link } from 'react-router-dom'
 import { Header } from '../../Header'
 import { useAuth } from '../../AuthContext'
-import { ofertasApi } from './ofertasApi'
+import { mensajeDelServidor, ofertasApi } from './ofertasApi'
 import type { Oferta } from './ofertasApi'
 import { NOMBRE_ESTADO, formatearFecha, formatearPesos } from './formato'
 import comun from './ofertas.module.css'
@@ -13,13 +13,15 @@ type Tab = 'pendientes' | 'completadas'
 
 /**
  * "Tareas pendientes" (Pending tasks): trabajos asignados al estudiante de la sesion (UPBCONECT-43 y 44).
- * Permite ver las tareas en progreso y los trabajos finalizados.
+ * Permite iniciar las tareas asignadas, ver las que estan en proceso y los trabajos finalizados.
  */
 export function TareasPendientesPage() {
   const { cerrarSesion } = useAuth()
   const [tareas, setTareas] = useState<Oferta[] | null>(null)
   const [error, setError] = useState(false)
   const [tab, setTab] = useState<Tab>('pendientes')
+  const [iniciando, setIniciando] = useState<number | null>(null)
+  const [errorAccion, setErrorAccion] = useState<string | null>(null)
 
   useEffect(() => {
     ofertasApi
@@ -30,6 +32,24 @@ export function TareasPendientesPage() {
         else setError(true)
       })
   }, [cerrarSesion])
+
+  /** Pasa una tarea de ASIGNADA a EN_PROCESO (UPBCONECT-44). */
+  const iniciarTrabajo = async (tarea: Oferta) => {
+    setErrorAccion(null)
+    setIniciando(tarea.id)
+    try {
+      const actualizada = await ofertasApi.actualizarEstado(tarea.id, 'EN_PROCESO')
+      setTareas((prev) => (prev ? prev.map((t) => (t.id === actualizada.id ? actualizada : t)) : prev))
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        await cerrarSesion()
+      } else {
+        setErrorAccion(mensajeDelServidor(err, 'No se pudo iniciar el trabajo. Inténtalo de nuevo.'))
+      }
+    } finally {
+      setIniciando(null)
+    }
+  }
 
   const pendientes = tareas?.filter((t) => t.estado !== 'FINALIZADA') ?? []
   const completadas = tareas?.filter((t) => t.estado === 'FINALIZADA') ?? []
@@ -45,6 +65,12 @@ export function TareasPendientesPage() {
         {error && (
           <p className={`${comun.nota} ${comun.notaError}`} role="alert">
             No se pudieron cargar tus tareas. Recarga la página para intentarlo de nuevo.
+          </p>
+        )}
+
+        {errorAccion && (
+          <p className={`${comun.nota} ${comun.notaError}`} role="alert">
+            {errorAccion}
           </p>
         )}
 
@@ -107,6 +133,16 @@ export function TareasPendientesPage() {
                   )}
                   <div><dt>Ubicación</dt><dd>{t.ubicacion}</dd></div>
                 </dl>
+                {t.estado === 'ASIGNADA' && (
+                  <button
+                    type="button"
+                    className={styles.botonIniciar}
+                    onClick={() => iniciarTrabajo(t)}
+                    disabled={iniciando === t.id}
+                  >
+                    {iniciando === t.id ? 'Iniciando...' : 'Iniciar trabajo'}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
