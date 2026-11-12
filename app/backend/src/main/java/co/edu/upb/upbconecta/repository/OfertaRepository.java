@@ -64,4 +64,14 @@ public interface OfertaRepository extends JpaRepository<Oferta, Long> {
                                @Param("ahora") LocalDateTime ahora,
                                @Param("patron") String patron,
                                Pageable pageable);
+         /** comentario de la busqueda */
+    @Query("""
+            ...
+            """)
+    Page<Oferta> buscarActivas(@Param("estado") EstadoOferta estado,
+                               @Param("ahora") LocalDateTime ahora,
+                               @Param("patron") String patron,
+                               Pageable pageable);
 }
+
+ 

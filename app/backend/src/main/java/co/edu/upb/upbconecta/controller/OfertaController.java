@@ -82,7 +82,7 @@ public class OfertaController {
      * @param page pagina solicitada, base 0 (default: 0)
      * @param size elementos por pagina, entre 1 y 50 (default: 10)
      */
-    @GetMapping
+       @GetMapping
     public Page<OfertaResumenDTO> listarActivas(
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") @Min(0) int page,
