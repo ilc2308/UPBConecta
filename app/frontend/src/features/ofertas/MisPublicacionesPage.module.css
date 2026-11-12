@@ -210,6 +210,27 @@
   background: var(--color-fucsia-claro);
 }
 
+.botonIniciar {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  padding: 6px 14px;
+  border: 1px solid var(--color-fucsia);
+  color: var(--color-blanco);
+  background: var(--color-fucsia);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.botonIniciar:hover:not(:disabled) {
+  background: var(--color-rojo);
+}
+
+.botonIniciar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .finalizadaNota {
   margin: 0;
   font-size: 0.8rem;

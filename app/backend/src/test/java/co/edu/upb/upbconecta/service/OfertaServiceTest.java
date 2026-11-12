@@ -236,6 +236,67 @@ class OfertaServiceTest {
 
         assertThat(resultado.estado()).isEqualTo(EstadoOferta.EN_PROCESO);
     }
+
+    @Test
+    void estudianteAsignadoPuedePasarAEnProceso() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario est = new SesionService.Usuario("est@upb.edu.co", "Estudiante");
+        ActualizarEstadoOfertaDTO dto = new ActualizarEstadoOfertaDTO(EstadoOferta.EN_PROCESO);
+
+        OfertaDTO resultado = ofertaService.actualizarEstado(1L, dto, est);
+
+        assertThat(resultado.estado()).isEqualTo(EstadoOferta.EN_PROCESO);
+    }
+
+    @Test
+    void estudianteNoAsignadoNoPuedePasarAEnProceso() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario otro = new SesionService.Usuario("otro@upb.edu.co", "Otro");
+
+        assertThatThrownBy(() -> ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.EN_PROCESO), otro))
+                .isInstanceOf(AccesoDenegadoException.class);
+    }
+
+    @Test
+    void estudianteAsignadoPuedeFinalizar() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        oferta.ponerEnProceso();
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario est = new SesionService.Usuario("est@upb.edu.co", "Estudiante");
+
+        OfertaDTO resultado = ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA), est);
+
+        assertThat(resultado.estado()).isEqualTo(EstadoOferta.FINALIZADA);
+        assertThat(resultado.fechaCierre()).isNotNull();
+    }
+
+    @Test
+    void estudianteNoAsignadoNoPuedeFinalizar() {
+        Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
+        UsuarioEntity estudiante = new UsuarioEntity("oid-est", "est@upb.edu.co", "Estudiante", RolUsuario.ESTUDIANTE, "Sistemas");
+        oferta.asignar(estudiante, LocalDateTime.now());
+        when(ofertas.findConBloqueoById(1L)).thenReturn(Optional.of(oferta));
+
+        SesionService.Usuario otro = new SesionService.Usuario("otro@upb.edu.co", "Otro");
+
+        assertThatThrownBy(() -> ofertaService.actualizarEstado(1L,
+                new ActualizarEstadoOfertaDTO(EstadoOferta.FINALIZADA), otro))
+                .isInstanceOf(AccesoDenegadoException.class);
+    }
+
     @Test
     void actualizarEstadoAFinalizadaConExito() {
         Oferta oferta = ofertaDeEmp(LocalDateTime.now().plusDays(1));
